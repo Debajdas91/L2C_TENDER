@@ -1,0 +1,1752 @@
+CLASS zcl_l2c_tender_mass_change_uti DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    TYPES:
+      BEGIN OF ty_mat_sales_data,
+        vkorg    TYPE vkorg,
+        vtweg    TYPE vtweg,
+        newmatnr TYPE vbap-matnr,
+      END OF ty_mat_sales_data .
+    TYPES:
+        tty_mat_sales_data TYPE STANDARD TABLE OF ty_mat_sales_data .
+    TYPES:
+      BEGIN OF ty_sales_data,
+        vkorg TYPE vkorg,
+        vtweg TYPE vtweg,
+      END OF ty_sales_data .
+    TYPES:
+      tty_sales_data TYPE STANDARD TABLE OF ty_sales_data .
+    TYPES:
+      BEGIN OF ty_order_items .
+        INCLUDE TYPE bapisdit.
+    TYPES: zzttype TYPE zl2c_tender_type,
+        calloff TYPE kwmeng,
+        bismt   TYPE bismt,
+      END OF ty_order_items .
+    TYPES:
+      tty_order_items TYPE STANDARD TABLE OF ty_order_items .
+    TYPES:
+      BEGIN OF ty_tenders,
+        vbeln        TYPE vbak-vbeln,
+        vkorg        TYPE vbak-vkorg,
+        vtweg        TYPE vbak-vtweg,
+        spart        TYPE vbak-spart,
+        posnr        TYPE vbap-posnr,
+        zzttype      TYPE vbak-zzttype,
+        knumv        TYPE vbak-knumv,
+        kwmeng       TYPE vbap-kwmeng,
+        zmeng        TYPE vbap-zmeng,
+        zmeng_c(14)  TYPE c,
+        vrkme        TYPE vbap-vrkme,
+        newmatnr     TYPE vbap-matnr,
+        calloff      TYPE vbap-kwmeng,
+        kbetr(10)    TYPE c,
+        kwmeng_c(14) TYPE c,
+        matnr        TYPE vbap-matnr,
+        bismt        TYPE mara-bismt,
+        abgru        TYPE vbap-abgru,
+        route        TYPE vbap-route,
+        prsdt        TYPE vbkd-prsdt,
+        message      TYPE bapi_msg,
+        msgty        TYPE msgty,
+        waers        TYPE konv-waers,
+        waerk        TYPE vbak-waerk,
+        kpein        TYPE konv-kpein,
+        kmein        TYPE konv-kmein,
+        stunr        TYPE konv-stunr,
+        zaehk        TYPE konv-zaehk,
+        kbetr_num    TYPE konv-kbetr,
+        guebg        TYPE vbak-guebg,
+        gueen        TYPE vbak-gueen,
+        zztstatus    TYPE vbak-zztstatus,
+      END OF ty_tenders .
+    TYPES:
+      tty_tenders TYPE STANDARD TABLE OF ty_tenders .
+
+    CONSTANTS:
+      BEGIN OF c_function,
+        change_matnr         TYPE char2 VALUE 'CM',
+        add_matnr            TYPE char2 VALUE 'AM',
+        reject_matnr         TYPE char2 VALUE 'RM',
+        change_pricing_date  TYPE char2 VALUE 'CP',
+        remove_rejection     TYPE char2 VALUE 'RR',
+        change_validity_date TYPE char2 VALUE 'CV',
+        change_status        TYPE char2 VALUE 'CS',
+      END OF c_function .
+    CONSTANTS c_msgty_e TYPE msgty VALUE 'E' ##NO_TEXT.
+    CONSTANTS c_msgty_s TYPE msgty VALUE 'S' ##NO_TEXT.
+    CONSTANTS c_pricing_b TYPE char1 VALUE 'B' ##NO_TEXT.
+
+    METHODS change_order
+      IMPORTING
+        !is_tender_params  TYPE zl2c_tender_params
+        !it_sales_doc_data TYPE vlc_sdoc_item_t
+      EXPORTING
+        !et_tender_msg     TYPE zl2c_t_tender_msg
+      RAISING
+        zcx_l2c_message .
+    METHODS clear_messages
+      RAISING
+        zcx_l2c_message .
+    METHODS update_messages
+      IMPORTING
+        !it_tender_msg TYPE zl2c_t_tender_msg
+      RAISING
+        zcx_l2c_message .
+    CLASS-METHODS get_instance
+      RETURNING
+        VALUE(ro_mass_change_util) TYPE REF TO zcl_l2c_tender_mass_change_uti .
+    METHODS trigger_pricing_vbap
+      CHANGING
+        !cv_new_pricing TYPE char1 .
+    METHODS response
+      IMPORTING
+        !p_task TYPE clike .
+    METHODS change_order_with_job
+      IMPORTING
+        !is_tender_params  TYPE zl2c_tender_params
+        !it_sales_doc_data TYPE vlc_sdoc_item_t
+        !io_log            TYPE REF TO if_bali_log
+      EXPORTING
+        !et_tender_msg     TYPE zl2c_t_tender_msg
+      RAISING
+        zcx_l2c_message .
+    METHODS get_selmode
+      RETURNING
+        VALUE(rv_selmode) TYPE zl2c_tender_selmode .
+    METHODS set_selmode
+      IMPORTING
+        !iv_selmode TYPE zl2c_tender_selmode .
+protected section.
+private section.
+
+  data T_SALES_DOC_DATA type VLC_SDOC_ITEM_T .
+  data T_TENDERS type TTY_TENDERS .
+  data T_SALES_DATA type TTY_SALES_DATA .
+  data S_TENDER_PARAMS type ZL2C_TENDER_PARAMS .
+  class-data O_MASS_CHANGE_UTIL type ref to ZCL_L2C_TENDER_MASS_CHANGE_UTI .
+  data V_NEW_PRICING type FLAG .
+  data V_BAPI_FINISHED type FLAG .
+  data T_RETURN type BAPIRET2_T .
+  data O_LOG type ref to IF_BALI_LOG .
+  data T_MAT_SALES_DATA type TTY_MAT_SALES_DATA .
+
+  methods DETERMINE_NEW_MATNR .
+  methods CHECK_MVKE
+    importing
+      !IV_BISMT type BISMT optional
+      !IV_MATNR type MATNR optional
+    raising
+      ZCX_L2C_MESSAGE .
+  methods CHECK_SALES_ORG_AUTH
+    raising
+      ZCX_L2C_MESSAGE .
+  methods CHECK_MATERIALS
+    raising
+      ZCX_L2C_MESSAGE .
+  methods GET_TENDER_INFO
+    raising
+      ZCX_L2C_MESSAGE .
+  methods GET_YTPR_PRICE
+    raising
+      ZCX_L2C_MESSAGE .
+  methods CHECK_MATERIAL_INCLUSION
+    raising
+      ZCX_L2C_MESSAGE .
+  methods CHECK_ENQUEUE
+    raising
+      ZCX_L2C_MESSAGE .
+  methods BAPI_CHANGE_TENDER
+    importing
+      !IV_TYPE type CHAR2
+    raising
+      ZCX_L2C_MESSAGE .
+ENDCLASS.
+
+
+
+CLASS ZCL_L2C_TENDER_MASS_CHANGE_UTI IMPLEMENTATION.
+
+
+  METHOD bapi_change_tender.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    CONSTANTS: lc_kschl_ytpr TYPE kscha VALUE 'YTPR',
+               lc_kherk_manu TYPE kherk VALUE 'C',
+               lc_task       TYPE char255 VALUE 'BAPI_TENDER'.
+
+    DATA: ls_header_in  TYPE bapisdh1,
+          ls_header_inx TYPE bapisdh1x,
+          ls_bape_vbak  TYPE bape_vbak,
+          ls_bape_vbakx TYPE bape_vbakx.
+
+    DATA: lt_items        TYPE wiso_t_sditm,
+          lt_itemsx       TYPE wiso_t_sditmx,
+          lt_sched_lines  TYPE wiso_t_schdl,
+          lt_sched_linesx TYPE wiso_t_schdlx,
+          lt_cond         TYPE wiso_t_cond,
+          lt_condx        TYPE wiso_t_condx,
+          lt_extensionin  TYPE wiso_t_parex,
+          lt_return       TYPE bapiret2_t.
+
+    DATA: lv_posnr         TYPE posnr_va,
+          lv_process_count TYPE char255,
+          lv_task          TYPE char255,
+          lv_bapicurr      TYPE bapicurr_d.
+
+    FIELD-SYMBOLS: <ls_tenders>      TYPE me->ty_tenders,
+                   <ls_items>        TYPE bapisditm,
+                   <ls_itemsx>       TYPE bapisditmx,
+                   <ls_sched_lines>  TYPE bapischdl,
+                   <ls_sched_linesx> TYPE bapischdlx,
+                   <ls_cond>         TYPE bapicond,
+                   <ls_condx>        TYPE bapicondx,
+                   <ls_extensionin>  TYPE bapiparex,
+                   <ls_return>       TYPE bapiret2,
+                   <lv_source>       TYPE x,
+                   <lv_target>       TYPE x.
+
+    IF me->s_tender_params-job IS NOT INITIAL.
+      "save error messages to log when ran via Job
+      LOOP AT me->t_tenders ASSIGNING <ls_tenders> WHERE msgty EQ me->c_msgty_e.
+        o_log->add_item( cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_error
+                                                           text     =  <ls_tenders>-message(200) ) ).
+        cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                   assign_to_current_appl_job = abap_true ).
+      ENDLOOP.
+    ENDIF.
+
+    LOOP AT me->t_tenders ASSIGNING <ls_tenders> WHERE msgty NE me->c_msgty_e.
+      IF me->s_tender_params-job IS NOT INITIAL.
+        "Log actual doc processing start
+        o_log->add_item( cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_information
+                                                          text     = |Start Processing { <ls_tenders>-vbeln } / { <ls_tenders>-posnr } at { sy-datlo } { sy-timlo } | ) ).
+        cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                   assign_to_current_appl_job = abap_true ).
+      ENDIF.
+
+      CLEAR: ls_header_in, ls_header_inx,
+             lt_items, lt_itemsx,
+             lt_sched_lines, lt_sched_linesx,
+             lt_cond, lt_condx,
+             lt_extensionin, ls_bape_vbak, ls_bape_vbakx.
+
+      lv_process_count = lv_process_count + 1.
+
+      ls_header_inx-updateflag = if_vf_prc_api_constants=>co_update.
+
+      IF iv_type = me->c_function-change_validity_date
+        OR iv_type = me->c_function-change_status.
+        "Header level operations, no need to process the rest of structures below
+        IF iv_type = me->c_function-change_validity_date.
+          "Either change from or to...
+          IF me->s_tender_params-guebg IS NOT INITIAL.
+            IF <ls_tenders>-guebg EQ me->s_tender_params-guebg.
+              MESSAGE s123 INTO <ls_tenders>-message.
+              <ls_tenders>-msgty = me->c_msgty_e.
+              IF me->s_tender_params-job IS NOT INITIAL.
+                o_log->add_item( cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_error
+                                                                   text     =  <ls_tenders>-message(200) ) ).
+                cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                           assign_to_current_appl_job = abap_true ).
+              ENDIF.
+              CONTINUE.
+            ELSE.
+              ls_header_in-ct_valid_f = me->s_tender_params-guebg.
+              ls_header_inx-ct_valid_f = abap_true.
+            ENDIF.
+          ENDIF.
+
+          IF me->s_tender_params-gueen IS NOT INITIAL.
+            IF <ls_tenders>-gueen EQ me->s_tender_params-gueen.
+              MESSAGE s123 INTO <ls_tenders>-message.
+              <ls_tenders>-msgty = me->c_msgty_e.
+              IF me->s_tender_params-job IS NOT INITIAL.
+                o_log->add_item( cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_error
+                                                                   text     =  <ls_tenders>-message(200) ) ).
+                cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                           assign_to_current_appl_job = abap_true ).
+              ENDIF.
+              CONTINUE.
+            ELSE.
+              ls_header_in-ct_valid_t = me->s_tender_params-gueen.
+              ls_header_inx-ct_valid_t = abap_true.
+            ENDIF.
+          ENDIF.
+        ENDIF.
+
+        IF iv_type = me->c_function-change_status.
+          IF <ls_tenders>-zztstatus EQ me->s_tender_params-zztstatus.
+            MESSAGE s124 INTO <ls_tenders>-message.
+            <ls_tenders>-msgty = me->c_msgty_e.
+            IF me->s_tender_params-job IS NOT INITIAL.
+              o_log->add_item( cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_error
+                                                                 text     =  <ls_tenders>-message(200) ) ).
+              cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                         assign_to_current_appl_job = abap_true ).
+            ENDIF.
+            CONTINUE.
+          ELSE.
+            APPEND INITIAL LINE TO lt_extensionin ASSIGNING <ls_extensionin>.
+            <ls_extensionin>-structure = 'BAPE_VBAK'.
+            ls_bape_vbak-vbeln       = <ls_tenders>-vbeln.
+            ls_bape_vbak-zztstatus   = me->s_tender_params-zztstatus.
+            ASSIGN <ls_extensionin>-valuepart1 TO <lv_target> CASTING.
+            ASSIGN ls_bape_vbak                TO <lv_source> CASTING.
+            <lv_target> = <lv_source>.
+
+            APPEND INITIAL LINE TO lt_extensionin ASSIGNING <ls_extensionin>.
+            <ls_extensionin>-structure = 'BAPE_VBAKX'.
+            ls_bape_vbakx-vbeln = <ls_tenders>-vbeln.
+            ls_bape_vbakx-zztstatus = abap_true.
+            ASSIGN <ls_extensionin>-valuepart1 TO <lv_target> CASTING.
+            ASSIGN ls_bape_vbakx               TO <lv_source> CASTING.
+            <lv_target> = <lv_source>.
+          ENDIF.
+        ENDIF.
+
+      ELSE.
+        "Item level operations
+        IF iv_type = me->c_function-change_matnr
+        OR iv_type = me->c_function-reject_matnr.
+
+          APPEND INITIAL LINE TO lt_items ASSIGNING <ls_items>.
+          <ls_items>-itm_number = <ls_tenders>-posnr.
+          <ls_items>-reason_rej = me->s_tender_params-abgru.
+
+          APPEND INITIAL LINE TO lt_itemsx ASSIGNING <ls_itemsx>.
+          <ls_itemsx>-itm_number = <ls_tenders>-posnr.
+          <ls_itemsx>-reason_rej = abap_true.
+          <ls_itemsx>-updateflag = if_vf_prc_api_constants=>co_update.
+
+        ELSEIF iv_type = me->c_function-remove_rejection.
+
+          APPEND INITIAL LINE TO lt_items ASSIGNING <ls_items>.
+          <ls_items>-itm_number = <ls_tenders>-posnr.
+          <ls_items>-reason_rej = space.
+
+          APPEND INITIAL LINE TO lt_itemsx ASSIGNING <ls_itemsx>.
+          <ls_itemsx>-itm_number = <ls_tenders>-posnr.
+          <ls_itemsx>-reason_rej = abap_true.
+          <ls_itemsx>-updateflag = if_vf_prc_api_constants=>co_update.
+
+        ELSEIF iv_type = me->c_function-change_pricing_date.
+
+          APPEND INITIAL LINE TO lt_items ASSIGNING <ls_items>.
+          <ls_items>-itm_number = <ls_tenders>-posnr.
+          <ls_items>-price_date = sy-datlo. "me->s_tender_params-prsdt.
+
+          APPEND INITIAL LINE TO lt_itemsx ASSIGNING <ls_itemsx>.
+          <ls_itemsx>-itm_number = <ls_tenders>-posnr.
+          <ls_itemsx>-price_date = abap_true.
+          <ls_itemsx>-updateflag = if_vf_prc_api_constants=>co_update.
+
+        ENDIF.
+
+        IF iv_type = me->c_function-change_matnr
+        OR iv_type = me->c_function-add_matnr.
+
+          SELECT MAX( posnr ) INTO lv_posnr
+            FROM vbap
+           WHERE vbeln = <ls_tenders>-vbeln.
+
+          IF sy-subrc NE 0.
+            CLEAR lv_posnr.
+            "Error handling
+          ENDIF.
+
+          "Tender item data for new item
+          lv_posnr = lv_posnr + 10.
+          APPEND INITIAL LINE TO lt_items ASSIGNING <ls_items>.
+          <ls_items>-itm_number = lv_posnr.
+
+          <ls_items>-target_qu  = <ls_tenders>-vrkme.
+          <ls_items>-sales_unit = <ls_tenders>-vrkme.
+          <ls_items>-route      = <ls_tenders>-route.
+          IF iv_type = me->c_function-add_matnr.
+            <ls_items>-target_qty = 1. " we set this to default 1, not me->s_tender_params-kwmeng.
+            <ls_items>-material   = me->s_tender_params-new_matnr.
+          ELSE. "c_function-change_matnr
+            <ls_items>-target_qty = <ls_tenders>-zmeng.
+            <ls_items>-reason_rej = me->s_tender_params-new_abgru.
+            "gat substituted new material
+            READ TABLE me->t_mat_sales_data ASSIGNING FIELD-SYMBOL(<ls_mat_sales>) WITH KEY vkorg = <ls_tenders>-vkorg vtweg = <ls_tenders>-vtweg.
+            IF sy-subrc IS INITIAL.
+              <ls_items>-material = <ls_mat_sales>-newmatnr.
+            ENDIF.
+          ENDIF.
+
+          <ls_items>-price_date = sy-datlo.  "me->s_tender_params-prsdt.
+
+          "Set default pricing date, otherwise the YSOP condition not created.
+*        IF <ls_items>-price_date IS INITIAL.
+*          <ls_items>-price_date = sy-datlo.
+*        ENDIF.
+
+          "Checklist for item data
+          APPEND INITIAL LINE TO lt_itemsx ASSIGNING <ls_itemsx>.
+          <ls_itemsx>-itm_number     = lv_posnr.
+          <ls_itemsx>-updateflag     = if_vf_prc_api_constants=>co_insert.
+          <ls_itemsx>-material       = abap_true.
+          <ls_itemsx>-target_qty     = abap_true.
+          <ls_itemsx>-target_qu      = abap_true.
+          <ls_itemsx>-sales_unit     = abap_true.
+          <ls_itemsx>-route          = abap_true.
+          <ls_itemsx>-price_date     = abap_true.
+          IF iv_type = me->c_function-change_matnr.
+            <ls_itemsx>-reason_rej = abap_true.
+          ENDIF.
+
+          "Schedule line data for item
+          APPEND INITIAL LINE TO lt_sched_lines ASSIGNING <ls_sched_lines>.
+          <ls_sched_lines>-itm_number = lv_posnr.
+          IF iv_type = me->c_function-add_matnr.
+            <ls_sched_lines>-req_qty    = me->s_tender_params-kwmeng.
+          ELSE.
+            <ls_sched_lines>-req_qty    = <ls_tenders>-kwmeng.
+          ENDIF.
+
+          "Checklist for schedule line item data
+          APPEND INITIAL LINE TO lt_sched_linesx ASSIGNING <ls_sched_linesx>.
+          <ls_sched_linesx>-itm_number = lv_posnr.
+          <ls_sched_linesx>-req_qty    = abap_true.
+
+          IF me->s_tender_params-function EQ me->c_function-add_matnr.
+            lv_bapicurr = me->s_tender_params-kbetr.
+          ELSE.
+            lv_bapicurr = <ls_tenders>-kbetr_num.
+          ENDIF.
+
+          CALL FUNCTION 'CURRENCY_AMOUNT_SAP_TO_BAPI'
+            EXPORTING
+              currency    = <ls_tenders>-waerk
+              sap_amount  = lv_bapicurr
+            IMPORTING
+              bapi_amount = lv_bapicurr.
+
+          "Tender condition data
+          APPEND INITIAL LINE TO lt_cond ASSIGNING <ls_cond>.
+          <ls_cond>-itm_number      = lv_posnr.
+          <ls_cond>-cond_type       = lc_kschl_ytpr.
+          <ls_cond>-cond_value      = lv_bapicurr.
+          <ls_cond>-currency        = <ls_tenders>-waerk.
+          <ls_cond>-condorigin      = lc_kherk_manu.
+          <ls_cond>-condchaman      = abap_true.
+          IF iv_type = me->c_function-add_matnr.
+            <ls_cond>-cond_unit       = me->s_tender_params-vrkme.
+            <ls_cond>-cond_p_unt      = me->s_tender_params-kwmeng.
+          ELSE.
+            <ls_cond>-cond_unit       = <ls_tenders>-kmein.
+            <ls_cond>-cond_p_unt      = <ls_tenders>-kpein.
+          ENDIF.
+
+          "Checklist for Tender condition data
+          APPEND INITIAL LINE TO lt_condx ASSIGNING <ls_condx>.
+          <ls_condx>-itm_number      = lv_posnr.
+          <ls_condx>-updateflag     = if_vf_prc_api_constants=>co_insert.
+          <ls_condx>-cond_type       = lc_kschl_ytpr.
+          <ls_condx>-cond_value      = abap_true.
+          <ls_condx>-currency        = abap_true.
+          <ls_condx>-cond_unit       = abap_true.
+          <ls_condx>-cond_p_unt      = abap_true.
+
+        ENDIF.
+      ENDIF.
+
+      CONCATENATE lc_task lv_process_count INTO lv_task.
+
+      CLEAR: me->v_bapi_finished,
+             me->t_return.
+
+      IF me->s_tender_params-job IS INITIAL.
+        "COMMIT can not be handled by RAP!
+        "Start a new task for processing
+        "Wait unil it returns and calls up the response method
+        "Bwoah...
+        CALL FUNCTION 'ZL2C_BAPI_TENDER_CHANGE' STARTING NEW TASK lv_task
+          CALLING response ON END OF TASK
+          EXPORTING
+            salesdocument        = <ls_tenders>-vbeln
+            quotation_header_in  = ls_header_in
+            quotation_header_inx = ls_header_inx
+            simulation           = me->s_tender_params-test
+          TABLES
+            return               = me->t_return
+            quotation_item_in    = lt_items
+            quotation_item_inx   = lt_itemsx
+            conditions_in        = lt_cond
+            conditions_inx       = lt_condx
+            schedule_lines       = lt_sched_lines
+            schedule_linesx      = lt_sched_linesx
+            extensionin          = lt_extensionin.
+
+        DO.
+          IF me->v_bapi_finished EQ abap_true.
+            EXIT.
+          ELSE.
+            WAIT UP TO 1 SECONDS.
+          ENDIF.
+        ENDDO.
+
+        LOOP AT me->t_return ASSIGNING <ls_return> WHERE type = if_loc_substn_constants=>co_msg_abort
+                                                      OR type = if_loc_substn_constants=>co_msg_error.
+
+          <ls_tenders>-message = <ls_return>-message.
+          <ls_tenders>-msgty = me->c_msgty_e.
+          EXIT.
+
+        ENDLOOP.
+        IF  sy-subrc NE 0.
+          IF me->s_tender_params-test IS INITIAL.
+
+            CALL FUNCTION 'BAPI_TRANSACTION_COMMIT' STARTING NEW TASK lv_task
+              EXPORTING
+                wait = abap_true.
+
+            "Tender has been modified successfully!
+            MESSAGE s100 INTO <ls_tenders>-message.
+            <ls_tenders>-msgty = me->c_msgty_s.
+
+          ELSE.
+
+            "Tender can be modified!
+            MESSAGE s104 INTO <ls_tenders>-message.
+            <ls_tenders>-msgty = me->c_msgty_s.
+
+          ENDIF.
+        ENDIF.
+
+      ELSE.
+        "Processing runs as a job, no need to the magic with starting new task
+
+        CALL FUNCTION 'ZL2C_BAPI_TENDER_CHANGE'
+          EXPORTING
+            salesdocument        = <ls_tenders>-vbeln
+            quotation_header_in  = ls_header_in
+            quotation_header_inx = ls_header_inx
+            simulation           = me->s_tender_params-test
+          TABLES
+            return               = me->t_return
+            quotation_item_in    = lt_items
+            quotation_item_inx   = lt_itemsx
+            conditions_in        = lt_cond
+            conditions_inx       = lt_condx
+            schedule_lines       = lt_sched_lines
+            schedule_linesx      = lt_sched_linesx
+            extensionin          = lt_extensionin.
+
+        "Log return
+        LOOP AT me->t_return ASSIGNING <ls_return>.
+          o_log->add_item( cl_bali_message_setter=>create(
+            severity   = <ls_return>-type
+            id         = <ls_return>-id
+            number     = <ls_return>-number
+            variable_1 = <ls_return>-message_v1
+            variable_2 = <ls_return>-message_v2
+            variable_3 = <ls_return>-message_v3
+            variable_4 = <ls_return>-message_v4 ) ).
+        ENDLOOP.
+
+        "Log actual doc processing end
+        o_log->add_item( cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_information
+                                                          text     = |End Processing { <ls_tenders>-vbeln } / { <ls_tenders>-posnr } at { sy-datlo } { sy-timlo } | ) ).
+        cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                   assign_to_current_appl_job = abap_true ).
+
+        LOOP AT me->t_return ASSIGNING <ls_return> WHERE type = if_loc_substn_constants=>co_msg_abort
+                                                      OR type = if_loc_substn_constants=>co_msg_error.
+          <ls_tenders>-message = <ls_return>-message.
+          <ls_tenders>-msgty = me->c_msgty_e.
+          EXIT.
+        ENDLOOP.
+        IF  sy-subrc NE 0.
+          IF me->s_tender_params-test IS INITIAL.
+
+            CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+              EXPORTING
+                wait = abap_true.
+
+            "Tender has been modified successfully!
+            MESSAGE s100 INTO <ls_tenders>-message.
+            <ls_tenders>-msgty = me->c_msgty_s.
+
+            o_log->add_item( cl_bali_message_setter=>create(
+              severity   = if_bali_constants=>c_severity_information
+              id         = 'ZL2C_TENDER'
+              number     = 100 ) ).
+            cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                       assign_to_current_appl_job = abap_true ).
+          ELSE.
+
+            "Tender can be modified!
+            MESSAGE s104 INTO <ls_tenders>-message.
+            <ls_tenders>-msgty = me->c_msgty_s.
+
+            o_log->add_item( cl_bali_message_setter=>create(
+              severity   = if_bali_constants=>c_severity_information
+              id         = 'ZL2C_TENDER'
+              number     = 104 ) ).
+            cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                       assign_to_current_appl_job = abap_true ).
+          ENDIF.
+        ENDIF.
+
+      ENDIF.
+
+
+      CALL FUNCTION 'DEQUEUE_EVVBAKE'
+        EXPORTING
+          vbeln = <ls_tenders>-vbeln.
+
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+
+  METHOD change_order.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    FIELD-SYMBOLS: <ls_tenders>    TYPE me->ty_tenders,
+                   <ls_tender_msg> TYPE zl2c_s_tender_msg.
+
+    me->s_tender_params = is_tender_params.
+
+    CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+      EXPORTING
+        input  = me->s_tender_params-new_matnr
+      IMPORTING
+        output = me->s_tender_params-new_matnr.
+
+    "Set New Pricing flag for user exit for MV45AFZB FORM USEREXIT_NEW_PRICING_VBAP CHANGING NEW_PRICING
+    IF me->s_tender_params-function EQ me->c_function-change_pricing_date.
+      me->v_new_pricing = me->s_tender_params-new_pricing.
+    ENDIF.
+
+    me->t_sales_doc_data = it_sales_doc_data.
+
+    "Get Tender Information
+    me->get_tender_info( ).
+
+    me->check_sales_org_auth( ).
+
+    "Material check
+    me->check_materials( ).
+
+    "Get YTPR price
+    me->get_ytpr_price( ).
+
+    "Check Material Inclusion
+    me->check_material_inclusion( ).
+
+    "Check Enqueue
+    me->check_enqueue( ).
+
+    "Change Tender
+    me->bapi_change_tender( iv_type = me->s_tender_params-function ).
+
+    LOOP AT me->t_tenders ASSIGNING <ls_tenders>.
+      APPEND INITIAL LINE TO et_tender_msg ASSIGNING <ls_tender_msg>.
+      MOVE-CORRESPONDING <ls_tenders> TO <ls_tender_msg>.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD change_order_with_job.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHJAVI     04-FEB-2023, Sunday      Initial                       *
+*&---------------------------------------------------------------------*
+
+    FIELD-SYMBOLS: <ls_tenders>    TYPE me->ty_tenders,
+                   <ls_tender_msg> TYPE zl2c_s_tender_msg.
+
+    me->s_tender_params = is_tender_params.
+    me->s_tender_params-job = abap_true.
+    me->o_log = io_log.
+
+    CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+      EXPORTING
+        input  = me->s_tender_params-new_matnr
+      IMPORTING
+        output = me->s_tender_params-new_matnr.
+
+    "Set New Pricing flag for user exit for MV45AFZB FORM USEREXIT_NEW_PRICING_VBAP CHANGING NEW_PRICING
+    IF me->s_tender_params-function EQ me->c_function-change_pricing_date.
+      me->v_new_pricing = me->s_tender_params-new_pricing.
+    ENDIF.
+
+    me->t_sales_doc_data = it_sales_doc_data.
+
+    TRY.
+        "Get Tender Information
+        me->get_tender_info( ).
+
+        me->check_sales_org_auth( ).
+
+        "determine new material from new base material
+        IF me->s_tender_params-function EQ me->c_function-change_matnr.
+          me->determine_new_matnr( ).
+        ENDIF.
+
+        "Material check
+        me->check_materials( ).
+
+        "Get YTPR price
+        me->get_ytpr_price( ).
+
+        "Check Material Inclusion
+        me->check_material_inclusion( ).
+
+        "Check Enqueue
+        me->check_enqueue( ).
+
+        "Change Tender
+        me->bapi_change_tender( iv_type = me->s_tender_params-function ).
+
+        LOOP AT me->t_tenders ASSIGNING <ls_tenders>.
+          APPEND INITIAL LINE TO et_tender_msg ASSIGNING <ls_tender_msg>.
+          MOVE-CORRESPONDING <ls_tenders> TO <ls_tender_msg>.
+        ENDLOOP.
+
+      CATCH zcx_l2c_message INTO DATA(lo_message).
+        o_log->add_item( cl_bali_message_setter=>create(
+          severity   = lo_message->v_msgty
+          id         = lo_message->v_msgid
+          number     = lo_message->v_msgno
+          variable_1 = lo_message->v_msgv1
+          variable_2 = lo_message->v_msgv2
+          variable_3 = lo_message->v_msgv3
+          variable_4 = lo_message->v_msgv4 ) ).
+        cl_bali_log_db=>get_instance( )->save_log( log                        = o_log
+                                                   assign_to_current_appl_job = abap_true ).
+
+    ENDTRY.
+
+  ENDMETHOD.
+
+
+  METHOD check_enqueue.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    DATA: lv_message TYPE char255.
+
+    FIELD-SYMBOLS: <ls_tenders> TYPE me->ty_tenders.
+
+    LOOP AT me->t_tenders ASSIGNING <ls_tenders>.
+
+      CALL FUNCTION 'ENQUEUE_EVVBAKE'
+        EXPORTING
+          vbeln          = <ls_tenders>-vbeln
+        EXCEPTIONS
+          foreign_lock   = 1
+          system_failure = 2
+          OTHERS         = 3.
+
+      IF sy-subrc EQ 0.
+        CALL FUNCTION 'DEQUEUE_EVVBAKE'
+          EXPORTING
+            vbeln = <ls_tenders>-vbeln.
+      ELSE.
+        "Tender &1 is already locked!
+        MESSAGE e103 WITH <ls_tenders>-vbeln INTO <ls_tenders>-message.
+        <ls_tenders>-msgty = c_msgty_e.
+*        zcx_l2c_message=>raise_cx_by_sy( ).
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD check_materials.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    IF me->s_tender_params-function EQ me->c_function-change_matnr.
+
+      me->check_mvke(
+        EXPORTING
+          iv_bismt = me->s_tender_params-old_bismt ).
+
+      LOOP AT me->t_mat_sales_data ASSIGNING FIELD-SYMBOL(<ls_mat_sales>).
+        me->check_mvke(
+          EXPORTING
+            iv_matnr = <ls_mat_sales>-newmatnr ).
+      ENDLOOP.
+    ENDIF.
+
+
+    IF  me->s_tender_params-function EQ me->c_function-add_matnr.
+
+      me->check_mvke(
+        EXPORTING
+          iv_matnr = me->s_tender_params-new_matnr ).
+
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD check_material_inclusion.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    DATA: lt_tenders  TYPE me->tty_tenders,
+          lt_vbak_key TYPE shp_sales_key_t,
+          lt_vbap     TYPE vbap_t.
+
+    FIELD-SYMBOLS: <ls_tenders>     TYPE me->ty_tenders,
+                   <ls_tenders_tmp> TYPE me->ty_tenders,
+                   <ls_vbak_key>    TYPE sales_key,
+                   <ls_vbap>        TYPE vbap.
+
+    lt_tenders = me->t_tenders.
+    SORT lt_tenders BY vbeln.
+    DELETE ADJACENT DUPLICATES FROM lt_tenders COMPARING vbeln.
+
+    IF lt_tenders IS NOT INITIAL.
+
+      LOOP AT lt_tenders ASSIGNING <ls_tenders>.
+        APPEND INITIAL LINE TO lt_vbak_key ASSIGNING <ls_vbak_key>.
+        <ls_vbak_key>-vbeln = <ls_tenders>-vbeln.
+      ENDLOOP.
+
+      CALL FUNCTION 'SD_VBAP_ARRAY_READ_VBELN'
+        TABLES
+          it_vbak_key           = lt_vbak_key
+          et_vbap               = lt_vbap
+        EXCEPTIONS
+          records_not_found     = 1
+          records_not_requested = 2
+          OTHERS                = 3.
+      IF sy-subrc EQ 0.
+        IF me->s_tender_params-function EQ me->c_function-reject_matnr
+          OR me->s_tender_params-function EQ me->c_function-remove_rejection.
+          SORT lt_vbap BY vbeln posnr zzbismt.
+          LOOP AT me->t_tenders ASSIGNING <ls_tenders>.
+            READ TABLE lt_vbap ASSIGNING <ls_vbap>
+               WITH KEY vbeln   = <ls_tenders>-vbeln
+                        posnr   = <ls_tenders>-posnr
+                        zzbismt = <ls_tenders>-bismt.
+            IF sy-subrc EQ 0.
+              IF me->s_tender_params-function EQ me->c_function-reject_matnr.
+                IF <ls_vbap>-abgru EQ me->s_tender_params-abgru.
+                  "Reason for Rejection already set!
+                  MESSAGE w109 INTO <ls_tenders>-message.
+                  <ls_tenders>-msgty = me->c_msgty_e.
+                ENDIF.
+              ELSE. "Remove rejection
+                IF <ls_vbap>-abgru IS INITIAL.
+                  "Tender &1 item &2 is not rejected!
+                  MESSAGE e120 WITH <ls_vbap>-vbeln <ls_vbap>-posnr  INTO <ls_tenders>-message.
+                  <ls_tenders>-msgty = c_msgty_e.
+*                  zcx_l2c_message=>raise_cx_by_sy( ).
+                ELSE.
+                  "Check if there is an other item with same material which is not rejected - so we can not remove rejection from this item
+                  READ TABLE lt_vbap ASSIGNING <ls_vbap>
+                    WITH KEY vbeln   = <ls_tenders>-vbeln
+                             zzbismt = <ls_tenders>-bismt
+                             abgru   = space.
+                  IF sy-subrc IS INITIAL.
+                    "Tender &1 item &2 already contains Base Material &3 without rejection!
+                    MESSAGE e119 WITH <ls_vbap>-vbeln <ls_vbap>-posnr <ls_vbap>-zzbismt INTO <ls_tenders>-message.
+                    <ls_tenders>-msgty = c_msgty_e.
+*                    zcx_l2c_message=>raise_cx_by_sy( ).
+                  ENDIF.
+
+                  "Check if there is an other rejected item with same base material - so we can not remove rejection from this item
+                  LOOP AT me->t_tenders ASSIGNING <ls_tenders_tmp>
+                    WHERE vbeln = <ls_tenders>-vbeln
+                      AND bismt = <ls_tenders>-bismt
+                      AND posnr NE <ls_tenders>-posnr.
+
+                    "Can not remove the rejection from items with same base material
+                    MESSAGE e121 WITH <ls_tenders>-vbeln <ls_tenders>-posnr <ls_tenders_tmp>-posnr INTO <ls_tenders>-message.
+                    <ls_tenders>-msgty = c_msgty_e.
+*                    zcx_l2c_message=>raise_cx_by_sy( ).
+                  ENDLOOP.
+
+                ENDIF.
+
+              ENDIF.
+            ENDIF.
+          ENDLOOP.
+        ELSE.
+          SORT lt_vbap BY vbeln matnr abgru.
+          LOOP AT me->t_tenders ASSIGNING <ls_tenders>.
+            READ TABLE lt_vbap TRANSPORTING NO FIELDS
+               WITH KEY vbeln = <ls_tenders>-vbeln
+                        matnr = <ls_tenders>-newmatnr
+                        abgru = space.  "VA42 allows adding the same MATNR, if the previous one is already rejected
+
+            IF sy-subrc EQ 0.
+              "New Material is already included in Tender: &1!
+              MESSAGE e102 WITH <ls_tenders>-vbeln INTO <ls_tenders>-message.
+              <ls_tenders>-msgty = me->c_msgty_e.
+            ENDIF.
+          ENDLOOP.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+
+
+  ENDMETHOD.
+
+
+  METHOD check_mvke.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    DATA: lv_message TYPE char255.
+
+    DATA: lt_mvke TYPE mvke_tt.
+
+    FIELD-SYMBOLS: <ls_sales_data> TYPE me->ty_sales_data.
+
+    IF iv_bismt IS NOT INITIAL.
+
+      IF me->t_sales_data IS NOT INITIAL.
+
+        SELECT mvke~vkorg mvke~vtweg
+          FROM mvke
+          INNER JOIN mara
+          ON mvke~matnr EQ mara~matnr
+          INTO CORRESPONDING FIELDS OF TABLE lt_mvke
+          FOR ALL ENTRIES IN me->t_sales_data
+          WHERE mvke~vkorg  EQ me->t_sales_data-vkorg
+            AND mvke~vtweg  EQ me->t_sales_data-vtweg
+            AND mara~bismt  EQ iv_bismt.
+
+        IF sy-subrc NE 0.
+          CLEAR lt_mvke.
+        ENDIF.
+      ENDIF.
+
+      SORT lt_mvke BY vkorg vtweg.
+
+      LOOP AT me->t_sales_data ASSIGNING <ls_sales_data>.
+        READ TABLE lt_mvke TRANSPORTING NO FIELDS
+            WITH KEY vkorg = <ls_sales_data>-vkorg
+                     vtweg = <ls_sales_data>-vtweg
+            BINARY SEARCH.
+        IF sy-subrc NE 0.
+          "There is no old material for sales org: &1 Dist.Channel &2!
+          MESSAGE e111 WITH <ls_sales_data>-vkorg <ls_sales_data>-vtweg INTO lv_message.
+          LOOP AT me->t_tenders ASSIGNING FIELD-SYMBOL(<ls_tender>).
+            <ls_tender>-message = lv_message.
+            <ls_tender>-msgty = me->c_msgty_e.
+          ENDLOOP.
+*          zcx_l2c_message=>raise_cx_by_sy( ).
+        ENDIF.
+      ENDLOOP.
+
+
+    ELSEIF iv_matnr IS NOT INITIAL.
+
+      IF me->t_sales_data IS NOT INITIAL.
+
+        SELECT vkorg vtweg
+          FROM mvke
+          INTO CORRESPONDING FIELDS OF TABLE lt_mvke
+          FOR ALL ENTRIES IN me->t_sales_data
+          WHERE vkorg EQ me->t_sales_data-vkorg
+            AND vtweg EQ me->t_sales_data-vtweg
+            AND matnr EQ iv_matnr.
+
+        IF sy-subrc NE 0.
+          CLEAR lt_mvke.
+        ENDIF.
+      ENDIF.
+
+      SORT lt_mvke BY vkorg vtweg.
+
+      LOOP AT me->t_sales_data ASSIGNING <ls_sales_data>.
+        READ TABLE lt_mvke TRANSPORTING NO FIELDS
+            WITH KEY vkorg = <ls_sales_data>-vkorg
+                     vtweg = <ls_sales_data>-vtweg
+            BINARY SEARCH.
+        IF sy-subrc NE 0.
+          "There is no new material for sales org: &1 Dist.Channel &2!
+          MESSAGE e112 WITH <ls_sales_data>-vkorg <ls_sales_data>-vtweg INTO lv_message.
+          LOOP AT me->t_tenders ASSIGNING <ls_tender>.
+            <ls_tender>-message = lv_message.
+            <ls_tender>-msgty = me->c_msgty_e.
+          ENDLOOP.
+*          zcx_l2c_message=>raise_cx_by_sy( ).
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD check_sales_org_auth.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    DATA: lv_message TYPE char255.
+
+    FIELD-SYMBOLS: <ls_sales_data> TYPE me->ty_sales_data.
+
+    LOOP AT me->t_sales_data ASSIGNING <ls_sales_data>.
+
+      AUTHORITY-CHECK OBJECT 'V_VBAK_VKO'
+                ID 'VKORG' FIELD <ls_sales_data>-vkorg
+                ID 'VTWEG' FIELD <ls_sales_data>-vtweg
+                ID 'ACTVT' FIELD '02'.
+      IF sy-subrc NE 0.
+        "There is no authorisation for Sales Org. &1 Dist. Channel &2!
+        MESSAGE e106 WITH <ls_sales_data>-vkorg <ls_sales_data>-vtweg INTO lv_message.
+        LOOP AT me->t_tenders ASSIGNING FIELD-SYMBOL(<ls_tender>) WHERE vkorg = <ls_sales_data>-vkorg AND vtweg = <ls_sales_data>-vtweg.
+          <ls_tender>-message = lv_message.
+          <ls_tender>-msgty = me->c_msgty_e.
+        ENDLOOP.
+*        zcx_l2c_message=>raise_cx_by_sy( ).
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+METHOD clear_messages.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+  DATA: lv_message TYPE string.
+
+  DATA: lr_vbeln TYPE RANGE OF vbeln,
+        lr_posnr TYPE RANGE OF posnr.
+
+  DELETE FROM zl2c_tendr_m_msg WHERE vbeln IN lr_vbeln
+                                 AND posnr IN lr_posnr
+                                 AND uname EQ sy-uname.
+  IF sy-subrc IS INITIAL.
+
+    "Messages are cleared successfully!
+    MESSAGE s113(zl2c_tender) INTO lv_message.
+  ENDIF.
+
+  zcx_l2c_message=>raise_cx_by_sy( ).
+
+ENDMETHOD.
+
+
+  method GET_INSTANCE.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+  "Does Instance Exist?
+  IF o_mass_change_util IS NOT BOUND.
+
+    "Create Tender Instance
+    CREATE OBJECT o_mass_change_util.
+  ENDIF.
+
+  "Does Instance Exist?
+  IF o_mass_change_util IS BOUND.
+    ro_mass_change_util = o_mass_change_util.
+  ENDIF.
+  endmethod.
+
+
+  method GET_SELMODE.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories : EWOW-53530                                           *
+*& Change       : 2000003281                                           *
+*&---------------------------------------------------------------------*
+*& Tender Mass Change Application                                      *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921762                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*& HUHJAVI       01-DEC-2023      Initial                              *
+*&---------------------------------------------------------------------*
+    SELECT SINGLE selectionmode FROM zl2c_tendm_smode INTO rv_selmode WHERE username = sy-uname.
+      IF sy-subrc is NOT INITIAL.
+        "Fall back, default
+        rv_selmode = 'I'.
+      ENDIF.
+  endmethod.
+
+
+  METHOD get_tender_info.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    DATA: lv_vkorg   TYPE vkorg,
+          lv_vtweg   TYPE vtweg,
+          lv_message TYPE string.
+
+    DATA: lt_tenders TYPE me->tty_tenders.
+
+    FIELD-SYMBOLS: <ls_tenders>     TYPE     me->ty_tenders,
+                   <ls_tenders_out> TYPE me->ty_tenders,
+                   <ls_sales_data>  TYPE me->ty_sales_data.
+
+    IF me->s_tender_params-function EQ me->c_function-change_validity_date OR
+       me->s_tender_params-function EQ me->c_function-change_status OR
+       me->s_tender_params-function EQ me->c_function-add_matnr.
+      "Header level operations
+
+      IF me->t_sales_doc_data IS NOT INITIAL.
+        SELECT vbak~vbeln
+               vbak~vkorg
+               vbak~vtweg
+               vbak~spart
+               vbak~zzttype
+               vbak~waerk
+               vbak~guebg
+               vbak~gueen
+               vbak~zztstatus
+               vbak~knumv
+              INTO CORRESPONDING FIELDS OF TABLE lt_tenders
+              FROM vbak    "as we allow now different tender statuses, data is not taken from the VAPM table
+              FOR ALL ENTRIES IN me->t_sales_doc_data
+              WHERE   vbak~vbeln             EQ me->t_sales_doc_data-vbeln.
+      ENDIF.
+
+    ELSE.
+
+      IF me->s_tender_params-function EQ me->c_function-change_matnr.
+
+        IF me->t_sales_doc_data IS NOT INITIAL.
+          SELECT vbap~vbeln
+                 vbap~posnr
+                 vbak~vkorg
+                 vbak~vtweg
+                 vbak~spart
+                 vbak~zzttype
+                 vbak~waerk
+                 vbak~guebg
+                 vbak~gueen
+                 vbak~zztstatus
+                 vbak~knumv
+                 vbap~kwmeng
+                 vbap~zmeng
+                 vbap~vrkme
+                 vbap~matnr
+                 vbap~abgru
+                 vbap~route
+                 vbkd~prsdt
+                 mara~bismt
+
+                INTO CORRESPONDING FIELDS OF TABLE lt_tenders
+                FROM vbap
+                INNER JOIN vbak
+                  ON  vbap~vbeln = vbak~vbeln
+                INNER JOIN vbkd
+                  ON vbkd~vbeln = vbap~vbeln
+                INNER JOIN mara   "as we allow now different tender statuses, data is not taken from the VAPM table
+                  ON mara~matnr = vbap~matnr
+                FOR ALL ENTRIES IN me->t_sales_doc_data
+                WHERE   vbak~vbeln             EQ me->t_sales_doc_data-vbeln
+                  AND   vbap~posnr             EQ me->t_sales_doc_data-posnr
+                  AND   mara~bismt             EQ me->s_tender_params-old_bismt. "base material is also considered during selection
+        ENDIF.
+      ELSE.
+
+        IF me->t_sales_doc_data IS NOT INITIAL.
+          SELECT vbap~vbeln
+                 vbap~posnr
+                 vbak~vkorg
+                 vbak~vtweg
+                 vbak~spart
+                 vbak~zzttype
+                 vbak~waerk
+                 vbak~guebg
+                 vbak~gueen
+                 vbak~zztstatus
+                 vbak~knumv
+                 vbap~kwmeng
+                 vbap~zmeng
+                 vbap~vrkme
+                 vbap~matnr
+                 vbap~abgru
+                 vbap~route
+                 vbkd~prsdt
+                 mara~bismt
+
+                INTO CORRESPONDING FIELDS OF TABLE lt_tenders
+                FROM vbap
+                INNER JOIN vbak
+                  ON  vbap~vbeln = vbak~vbeln
+                INNER JOIN vbkd
+                  ON vbkd~vbeln = vbap~vbeln
+                INNER JOIN mara   "as we allow now different tender statuses, data is not taken from the VAPM table
+                  ON mara~matnr = vbap~matnr
+                FOR ALL ENTRIES IN me->t_sales_doc_data
+                WHERE   vbak~vbeln             EQ me->t_sales_doc_data-vbeln
+                  AND   vbap~posnr             EQ me->t_sales_doc_data-posnr.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+    IF sy-subrc EQ 0.
+      IF me->s_tender_params-function EQ me->c_function-add_matnr.
+*        OR me->s_tender_params-function EQ me->c_function-change_matnr.
+        SELECT SINGLE meins FROM mara INTO @DATA(lv_new_matnr_meins) WHERE matnr = @me->s_tender_params-new_matnr.
+        IF sy-subrc IS NOT INITIAL.
+          CLEAR lv_new_matnr_meins.
+        ENDIF.
+      ENDIF.
+
+      SORT lt_tenders BY vbeln.
+
+      LOOP AT lt_tenders ASSIGNING <ls_tenders>.
+        IF lv_vkorg NE <ls_tenders>-vkorg
+        OR lv_vtweg NE <ls_tenders>-vtweg.
+          APPEND INITIAL LINE TO me->t_sales_data ASSIGNING <ls_sales_data>.
+          <ls_sales_data>-vkorg = lv_vkorg = <ls_tenders>-vkorg.
+          <ls_sales_data>-vtweg = lv_vtweg = <ls_tenders>-vtweg.
+        ENDIF.
+      ENDLOOP.
+
+      "determine new material from new base material
+      IF me->s_tender_params-function EQ me->c_function-change_matnr.
+        me->determine_new_matnr( ).
+      ENDIF.
+
+      LOOP AT lt_tenders ASSIGNING <ls_tenders>.
+        APPEND INITIAL LINE TO me->t_tenders ASSIGNING <ls_tenders_out>.
+
+        MOVE-CORRESPONDING <ls_tenders> TO <ls_tenders_out>.
+        WRITE <ls_tenders>-kwmeng     TO <ls_tenders_out>-kwmeng_c.
+        WRITE <ls_tenders>-zmeng      TO <ls_tenders_out>-zmeng_c.
+*        IF me->s_tender_params-function EQ me->c_function-change_pricing_date.
+**          CLEAR <ls_tenders_out>-posnr.
+*          <ls_tenders_out>-newmatnr    = me->s_tender_params-new_matnr.
+*          <ls_tenders_out>-kwmeng = me->s_tender_params-kwmeng.
+*          <ls_tenders_out>-vrkme  = me->s_tender_params-vrkme.
+**          <ls_tenders_out>-bismt  = me->s_tender_params-new_matnr.
+
+        IF me->s_tender_params-function EQ me->c_function-add_matnr.
+          <ls_tenders_out>-kwmeng = me->s_tender_params-kwmeng.
+          <ls_tenders_out>-vrkme  = lv_new_matnr_meins. "The base UoM of the new Material will go to tender item level, and not : me->s_tender_params-vrkme.
+          <ls_tenders_out>-newmatnr    = me->s_tender_params-new_matnr.
+          <ls_tenders_out>-bismt  = me->s_tender_params-new_matnr.
+          <ls_tenders_out>-waerk  = <ls_tenders>-waerk.
+        ELSE.
+          "get substituted new matnr
+          READ TABLE me->t_mat_sales_data ASSIGNING FIELD-SYMBOL(<ls_mat_sales>) WITH KEY vkorg = <ls_tenders_out>-vkorg vtweg = <ls_tenders_out>-vtweg.
+          IF sy-subrc IS INITIAL.
+            <ls_tenders_out>-newmatnr = <ls_mat_sales>-newmatnr.
+            "Revert this logic as per latest requirements... when copy an item from an other, the UoM is taken from the reference.
+*            SELECT SINGLE meins FROM mara INTO @lv_new_matnr_meins WHERE matnr = @<ls_mat_sales>-newmatnr.
+*            IF sy-subrc IS INITIAL.
+*              <ls_tenders_out>-vrkme       = lv_new_matnr_meins. "The base UoM of the new Material will go to tender item level, and not : me->s_tender_params-vrkme.
+*            ELSE.
+*              CLEAR lv_new_matnr_meins.
+*            ENDIF.
+          ENDIF.
+
+*          <ls_tenders_out>-bismt       = <ls_tenders>-newmatnr.
+*          <ls_tenders_out>-guebg       = <ls_tenders>-guebg.
+*          <ls_tenders_out>-gueen       = <ls_tenders>-gueen.
+*          <ls_tenders_out>-zztstatus       = <ls_tenders>-zztstatus.
+        ENDIF.
+
+      ENDLOOP.
+
+      IF me->s_tender_params-function EQ me->c_function-change_pricing_date.
+        SORT me->t_tenders BY vbeln posnr.
+        DELETE ADJACENT DUPLICATES FROM me->t_tenders COMPARING vbeln posnr.
+      ELSEIF me->s_tender_params-function NE me->c_function-reject_matnr
+      AND    me->s_tender_params-function NE me->c_function-remove_rejection.
+        SORT me->t_tenders BY vbeln posnr newmatnr.
+        DELETE ADJACENT DUPLICATES FROM me->t_tenders COMPARING vbeln posnr newmatnr.
+      ELSE.
+        SORT me->t_tenders BY vbeln posnr bismt.
+        DELETE ADJACENT DUPLICATES FROM me->t_tenders COMPARING vbeln posnr bismt.
+      ENDIF.
+    ENDIF.
+
+    IF me->t_tenders IS INITIAL.
+      "There is no Tender Document based on Selection criteria!
+      MESSAGE e117(zl2c_tender) INTO lv_message.
+      zcx_l2c_message=>raise_cx_by_sy( ).
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD get_ytpr_price.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    CONSTANTS: lc_kschl_ytpr TYPE kscha VALUE 'YTPR'.
+
+    DATA: lt_vbak TYPE vbak_t,
+          lt_konv TYPE vlc_konv_t.
+
+    FIELD-SYMBOLS: <ls_vbak>    TYPE vbak,
+                   <ls_tenders> TYPE me->ty_tenders,
+                   <ls_konv>    TYPE konv.
+
+    LOOP AT me->t_tenders ASSIGNING <ls_tenders>.
+      APPEND INITIAL LINE TO lt_vbak ASSIGNING <ls_vbak>.
+      <ls_vbak>-vbeln = <ls_tenders>-vbeln.
+      <ls_vbak>-knumv = <ls_tenders>-knumv.
+    ENDLOOP.
+
+    SORT lt_vbak.
+    DELETE ADJACENT DUPLICATES FROM lt_vbak.
+
+    CALL FUNCTION 'VELO25_READ_KONV'
+      EXPORTING
+        vbak_it = lt_vbak
+      IMPORTING
+        konv_et = lt_konv.
+
+    DELETE lt_konv WHERE kschl NE lc_kschl_ytpr.
+
+    SORT lt_konv BY knumv kposn stunr zaehk.
+
+    LOOP AT me->t_tenders ASSIGNING <ls_tenders>.
+
+      IF me->s_tender_params-function NE me->c_function-add_matnr.
+
+        IF <ls_tenders>-abgru IS INITIAL OR
+          me->s_tender_params-function EQ me->c_function-change_matnr. "Change material now allows to work with rejected item
+          IF me->s_tender_params-function EQ me->c_function-remove_rejection.
+            "Tender &1 with Base Material &2 is not rejected!
+            MESSAGE w107 WITH <ls_tenders>-vbeln <ls_tenders>-bismt INTO <ls_tenders>-message.
+            <ls_tenders>-msgty = me->c_msgty_e.
+          ELSE.
+
+            READ TABLE lt_konv ASSIGNING <ls_konv>
+                WITH KEY knumv = <ls_tenders>-knumv
+                         kposn = <ls_tenders>-posnr.
+
+            IF sy-subrc EQ 0.
+              WRITE <ls_konv>-kbetr TO <ls_tenders>-kbetr.
+              WRITE <ls_konv>-waers TO <ls_tenders>-waers.
+              MOVE  <ls_konv>-kpein TO <ls_tenders>-kpein.
+              WRITE <ls_konv>-kmein TO <ls_tenders>-kmein.
+              <ls_tenders>-stunr = <ls_konv>-stunr.
+              <ls_tenders>-zaehk = <ls_konv>-zaehk.
+              <ls_tenders>-kbetr_num = <ls_konv>-kbetr.
+            ENDIF.
+          ENDIF.
+        ELSE.
+
+*          IF me->s_tender_params-function EQ me->c_function-reject_matnr.
+*            "Tender &1 with Material &2 is rejected!
+*            MESSAGE w108 WITH <ls_tenders>-vbeln <ls_tenders>-newmatnr INTO <ls_tenders>-message.
+*            <ls_tenders>-msgty = me->c_msgty_e.
+*
+*          ELSE
+          IF me->s_tender_params-function NE me->c_function-remove_rejection AND
+             me->s_tender_params-function ne me->c_function-reject_matnr and
+             me->s_tender_params-function NE me->c_function-change_matnr.
+            "Tender &1 with Material &2 is rejected!
+            MESSAGE w108 WITH <ls_tenders>-vbeln <ls_tenders>-newmatnr INTO <ls_tenders>-message.
+            <ls_tenders>-msgty = me->c_msgty_e.
+          ENDIF.
+        ENDIF.
+      ELSE.
+        WRITE me->s_tender_params-kbetr TO <ls_tenders>-kbetr.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD response.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    RECEIVE RESULTS FROM FUNCTION 'ZL2C_BAPI_TENDER_CHANGE'
+    TABLES  return = me->t_return.
+
+    me->v_bapi_finished = abap_true.
+
+  ENDMETHOD.
+
+
+  method SET_SELMODE.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories : EWOW-53530                                           *
+*& Change       : 2000003281                                           *
+*&---------------------------------------------------------------------*
+*& Tender Mass Change Application                                      *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921762                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*& HUHJAVI       01-DEC-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    DATA: ls_smode TYPE zl2c_tendm_smode.
+    ls_smode-selectionmode = iv_selmode.
+    ls_smode-username = sy-uname.
+
+    MODIFY zl2c_tendm_smode FROM ls_smode.
+    IF sy-subrc is not INITIAL.
+      clear ls_smode.
+    ENDIF.
+  endmethod.
+
+
+  METHOD trigger_pricing_vbap.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    IF me->v_new_pricing is not INITIAL.
+      cv_new_pricing = me->c_pricing_b.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+METHOD update_messages.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHAKKE      05-OCT-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+  CONSTANTS: lc_success TYPE msgty VALUE 'S',
+             lc_error   TYPE msgty VALUE 'E',
+             lc_green   TYPE int1 VALUE 3,
+             lc_red     TYPE int1 VALUE 1.
+
+  DATA: lv_message TYPE string.
+
+  DATA: lr_vbeln TYPE RANGE OF vbeln,
+        lr_posnr TYPE RANGE OF posnr.
+
+  DATA: lt_tendr_m_msg TYPE TABLE OF zl2c_tendr_m_msg.
+
+  FIELD-SYMBOLS: <ls_tender_msg>  TYPE zl2c_s_tender_msg,
+                 <ls_tendr_m_msg> TYPE zl2c_tendr_m_msg.
+
+  DELETE FROM zl2c_tendr_m_msg WHERE vbeln IN lr_vbeln
+                                 AND posnr IN lr_posnr
+                                 AND uname EQ sy-uname.
+  IF sy-subrc IS NOT INITIAL.
+    CLEAR lt_tendr_m_msg.
+*    "Messages couldn't be cleared!
+*    MESSAGE e114(zl2c_tender) INTO lv_message.
+  ENDIF.
+
+  LOOP AT it_tender_msg ASSIGNING <ls_tender_msg>.
+    APPEND INITIAL LINE TO lt_tendr_m_msg ASSIGNING <ls_tendr_m_msg>.
+    <ls_tendr_m_msg>-vbeln  = <ls_tender_msg>-vbeln.
+    <ls_tendr_m_msg>-posnr  = <ls_tender_msg>-posnr.
+    <ls_tendr_m_msg>-uname  = sy-uname.
+    <ls_tendr_m_msg>-msgtxt = <ls_tender_msg>-message.
+    <ls_tendr_m_msg>-msgty  = <ls_tender_msg>-msgty.
+    CASE <ls_tender_msg>-msgty.
+      WHEN lc_success.
+        <ls_tendr_m_msg>-crit = lc_green.
+      WHEN lc_error.
+        <ls_tendr_m_msg>-crit = lc_red.
+      WHEN OTHERS.
+        CONTINUE.
+    ENDCASE.
+  ENDLOOP.
+
+  MODIFY zl2c_tendr_m_msg FROM TABLE lt_tendr_m_msg.
+  IF sy-subrc IS INITIAL.
+
+    "Messages are updated successfully!
+    MESSAGE s115(zl2c_tender) INTO lv_message.
+*  ELSE.
+*
+*    "Messages couldn't be updated!
+*    MESSAGE e116(zl2c_tender) INTO lv_message.
+  ENDIF.
+
+  zcx_l2c_message=>raise_cx_by_sy( ).
+
+ENDMETHOD.
+
+
+  METHOD determine_new_matnr.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K933562                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHJAVI      04-APR-2024      Initial                              *
+*&---------------------------------------------------------------------*
+    CONSTANTS:
+      lc_application TYPE t683-kappl VALUE 'V',
+      lc_scheme      TYPE t683-kalsm VALUE 'Y00002'.
+
+    DATA: ls_header_comm TYPE komkd,
+          ls_item_comm   TYPE kompd,
+          lt_konddp_data TYPE TABLE OF konddp,
+          lv_message     TYPE char255.
+
+    ls_item_comm-matwa = me->s_tender_params-new_bismt && '*'.
+
+    LOOP AT me->t_sales_data ASSIGNING FIELD-SYMBOL(<ls_sales_data>).
+      CLEAR: ls_header_comm.
+
+      ls_header_comm-vkorg = <ls_sales_data>-vkorg.
+      ls_header_comm-vtweg = <ls_sales_data>-vtweg.
+
+      CALL FUNCTION 'PRODUCT_SUBSTITUTION'
+        EXPORTING
+          application          = lc_application
+          date                 = sy-datlo
+          dialog               = space
+          header_communication = ls_header_comm
+          item_communication   = ls_item_comm
+          scheme               = lc_scheme
+*         PROTOKOLL            = ' '
+*     IMPORTING
+*         KONDD_DATA           =
+        TABLES
+          konddp_data          = lt_konddp_data.
+
+      READ TABLE lt_konddp_data ASSIGNING FIELD-SYMBOL(<ls_res>) INDEX 1.
+      IF sy-subrc IS INITIAL.
+        APPEND INITIAL LINE TO me->t_mat_sales_data ASSIGNING FIELD-SYMBOL(<ls_mat_sales>).
+        <ls_mat_sales>-newmatnr = <ls_res>-smatn.
+        <ls_mat_sales>-vkorg = <ls_sales_data>-vkorg.
+        <ls_mat_sales>-vtweg = <ls_sales_data>-vtweg.
+      ELSE.
+        MESSAGE e122 WITH <ls_sales_data>-vkorg <ls_sales_data>-vtweg INTO lv_message.
+        LOOP AT me->t_tenders ASSIGNING FIELD-SYMBOL(<ls_tender>) WHERE vkorg = <ls_sales_data>-vkorg AND vtweg = <ls_sales_data>-vtweg.
+          <ls_tender>-message = lv_message.
+          <ls_tender>-msgty = me->c_msgty_e.
+        ENDLOOP.
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+ENDCLASS.
