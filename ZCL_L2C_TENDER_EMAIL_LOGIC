@@ -1,0 +1,113 @@
+class ZCL_L2C_TENDER_EMAIL_LOGIC definition
+  public
+  final
+  create public .
+
+public section.
+
+  methods SET_SELMODE
+    importing
+      !IV_SELMODE type ZL2C_TENDER_SELMODE .
+  methods GET_SELMODE
+    returning
+      value(RV_SELMODE) type ZL2C_TENDER_SELMODE .
+  class-methods GET_INSTANCE
+    returning
+      value(RO_TENDERR) type ref to ZCL_L2C_TENDER_EMAIL_LOGIC .
+protected section.
+private section.
+
+  class-data O_TENDERR type ref to ZCL_L2C_TENDER_EMAIL_LOGIC .
+ENDCLASS.
+
+
+
+CLASS ZCL_L2C_TENDER_EMAIL_LOGIC IMPLEMENTATION.
+
+
+  method GET_INSTANCE.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories : EWOW-53530                                           *
+*& Change       : 2000003281                                           *
+*&---------------------------------------------------------------------*
+*& Tender Report Application                                         *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921762                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*& HUHJAVI       01-DEC-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    "Does Instance Exist?
+    IF o_tenderr IS NOT BOUND.
+
+      "Create Instance
+      CREATE OBJECT o_tenderr.
+    ENDIF.
+
+    "Does Instance Exist?
+    IF o_tenderr IS BOUND.
+      ro_tenderr = o_tenderr.
+    ENDIF.
+  endmethod.
+
+
+  METHOD get_selmode.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories : EWOW-53530                                           *
+*& Change       : 2000003281                                           *
+*&---------------------------------------------------------------------*
+*& Tender Report Application                                         *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921762                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*& HUHJAVI       01-DEC-2023      Initial                              *
+*&---------------------------------------------------------------------*
+    SELECT SINGLE selectionmode FROM zl2c_tendr_smode INTO rv_selmode WHERE username = sy-uname.
+      IF sy-subrc is NOT INITIAL.
+        "Fall back, default
+        rv_selmode = 'I'.
+      ENDIF.
+  ENDMETHOD.
+
+
+  METHOD set_selmode.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories : EWOW-53530                                           *
+*& Change       : 2000003281                                           *
+*&---------------------------------------------------------------------*
+*& Tender Report Application                                         *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921762                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*& HUHJAVI       01-DEC-2023      Initial                              *
+*&---------------------------------------------------------------------*
+
+    DATA: ls_smode TYPE zl2c_tendr_smode.
+    ls_smode-selectionmode = iv_selmode.
+    ls_smode-username = sy-uname.
+
+    MODIFY zl2c_tendr_smode FROM ls_smode.
+    IF sy-subrc is not INITIAL.
+      clear ls_smode.
+    ENDIF.
+
+  ENDMETHOD.
+ENDCLASS.
