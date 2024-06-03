@@ -1,0 +1,28 @@
+unmanaged implementation in class zcl_l2c_tender_mass_change unique;
+strict;
+
+define behavior for ZL2C_I_TENDER_MASS_CHANGE alias MassChange
+//late numbering
+lock master
+authorization master ( instance )
+//etag master <field_name>
+{
+  //  update;
+
+  // Remember to add these action to annotation.xml as well!
+  // otherwise they do not appear in this project for some reason :S
+
+  static action clear_message result [0..*] $self;
+  static action SetReadMode parameter zl2c_d_tender_m_settings_popup result [0..*] $self;
+
+  action ( features : instance ) change_status parameter ZL2C_D_TENDER_CHANGE_tndstat result [0..*] $self;
+  action ( features : instance ) change_validity_date_fr parameter ZL2C_D_TENDER_CHANGE_VALDT_fr result [0..*] $self;
+  action ( features : instance ) change_validity_date_to parameter ZL2C_D_TENDER_CHANGE_VALDT_to result [0..*] $self;
+
+  action ( features : instance ) change_material parameter Zl2c_D_tender_change_material result [0..*] $self;
+  action ( features : instance ) add_material parameter ZL2C_D_TENDER_ADD_MATERIAL result [0..*] $self;
+  action ( features : instance ) reject_material parameter ZL2C_D_TENDER_REJECT_MATERIAL result [0..*] $self;
+  action ( features : instance ) change_pricing_date parameter ZL2C_D_TENDER_CHANGE_PRSDT result [0..*] $self;
+  action ( features : instance ) remove_rejection parameter ZL2C_D_TENDER_REMOVE_REJECTION result [0..*] $self;
+
+}
