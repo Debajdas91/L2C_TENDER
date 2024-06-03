@@ -1,0 +1,377 @@
+@Metadata.layer: #CUSTOMER
+@UI:{ headerInfo: {
+    typeName: 'Tender Document',
+    typeNamePlural: 'Tender Documents',
+    title: {
+        type: #STANDARD,
+        label: 'Tender Document',
+        value: 'SalesContract'
+    },
+     description: {
+            value: 'SoldToPartyName'
+     }
+} }
+annotate view ZL2C_C_TENDER_EMAIL with
+{
+  @UI.facet: [
+
+  //  header facets
+      {
+          id: 'TenderHeaderPrice',
+          purpose: #HEADER,
+          type: #DATAPOINT_REFERENCE,
+          position: 10,
+          targetQualifier: 'PriceData'
+      },
+      {
+          id: 'TenderHeaderStatus',
+          purpose: #HEADER,
+          type: #DATAPOINT_REFERENCE,
+          position: 20,
+          targetQualifier: 'StatusData'
+       },
+
+  //Field group collection
+    { id:              'Facet1-ID',
+      type:            #COLLECTION,
+      label:           'Tender Data',
+      position:        10 },
+
+    { id:              'Facet2-ID',
+      type:            #COLLECTION,
+      label:           'Customer Data',
+      position:        20 },
+
+  // sub group 1
+    { id:              'Fieldgroup1-ID',
+      type:            #FIELDGROUP_REFERENCE,
+      label:           'Header Details',
+      parentId:        'Facet1-ID', // Places this facet into 'Facet 1'
+      targetQualifier: 'FG_Tender', // No targetElement defined - Default target is the entity in which the facet is defined
+      position:         10 },
+
+  // sub group 1
+    { id:              'Fieldgroup11-ID',
+      type:            #FIELDGROUP_REFERENCE,
+      label:           'Sales Details',
+      parentId:        'Facet1-ID', // Places this facet into 'Facet 1'
+      targetQualifier: 'FG_Sales', // No targetElement defined - Default target is the entity in which the facet is defined
+      position:         11 },
+
+  // sub group 2
+    { id:              'Fieldgroup2-ID',
+      type:            #FIELDGROUP_REFERENCE,
+      label:           'Organisation',
+      parentId:        'Facet1-ID', // Places this facet into 'Facet 1'
+      targetQualifier: 'FG_Org', // No targetElement defined - Default target is the entity in which the facet is defined
+      position:         20 },
+
+  // sub group 3
+    { id:              'Fieldgroup3-ID',
+      type:            #FIELDGROUP_REFERENCE,
+      label:           'Customer Data',
+      parentId:        'Facet2-ID', // Places this facet into 'Facet 1'
+      targetQualifier: 'FG_Customer', // No targetElement defined - Default target is the entity in which the facet is defined
+      position:         30 },
+
+  // sub group 4
+    { id:              'Fieldgroup4-ID',
+      type:            #FIELDGROUP_REFERENCE,
+      label:           'AA Customer Data',
+      parentId:        'Facet2-ID', // Places this facet into 'Facet 1'
+      targetQualifier: 'FG_AACustomer', // No targetElement defined - Default target is the entity in which the facet is defined
+      position:         40 },
+
+  // sub group 5
+    { id:              'Fieldgroup5-ID',
+      type:            #FIELDGROUP_REFERENCE,
+      label:           'Administrative Data',
+      parentId:        'Facet1-ID', // Places this facet into 'Facet 1'
+      targetQualifier: 'FG_Admin', // No targetElement defined - Default target is the entity in which the facet is defined
+      position:         50 },
+
+  // sub group 6
+    { id:              'Fieldgroup6-ID',
+      type:            #FIELDGROUP_REFERENCE,
+      label:           'Item Data',
+  //      parentId:        'Facet1-ID', // Places this facet into 'Facet 1'
+      targetQualifier: 'FG_Item', // No targetElement defined - Default target is the entity in which the facet is defined
+      position:         60 }
+
+  ]
+
+
+
+
+  @UI:{ lineItem: [
+        { position: 05, label: 'Tender Document', importance: #HIGH,
+         type: #FOR_INTENT_BASED_NAVIGATION, semanticObject: 'SalesContract' },
+        { position: 05 }],
+        identification: [{position: 05, label: 'Tender Document' }],
+        selectionField: [{position: 05 } ],
+        fieldGroup:     [ { qualifier: 'FG_Tender', position: 10 } ]
+        }
+  @EndUserText.label: 'Tender Document'
+  @Consumption.semanticObject: 'SalesContract'
+  SalesContract;
+
+  @UI:{ lineItem: [{position: 06,cssDefault.width: '3rem', importance: #HIGH }, { position: 06 }],
+  identification: [{position: 06, label: 'Tender Document Item' } ],
+  fieldGroup:     [ { qualifier: 'FG_Tender', position: 20 } ] }
+  SalesContractItem;
+
+  @UI:{
+        lineItem: [{position: 10,cssDefault.width: '3rem', importance: #HIGH }, { position: 10 }     ],
+        identification: [{position: 10 }],
+        selectionField: [{position: 10 }],
+        fieldGroup:     [ { qualifier: 'FG_Org', position: 10 } ] }
+  SalesOrganization;
+
+  @UI:{
+         lineItem: [{position: 20, importance: #HIGH }, { position: 20 }],
+       identification: [{position: 20 }],
+       selectionField: [{position: 20 }],
+       fieldGroup:     [ { qualifier: 'FG_Org', position: 20 } ] }
+  DistributionChannel;
+
+
+  @UI:{
+        lineItem: [{position: 40, importance: #HIGH }, { position: 40 } ],
+        identification: [{position: 40 }],
+        selectionField: [{position: 40 }],
+        fieldGroup:     [ { qualifier: 'FG_Org', position: 30 } ]}
+  Division;
+
+  @UI:{ lineItem: [{position: 50, importance: #HIGH,type: #FOR_INTENT_BASED_NAVIGATION,
+    semanticObject: 'Customer', requiresContext: true }, { position: 50 } ],
+        identification: [{position: 50 }],
+        selectionField: [{position: 50 }],
+        fieldGroup:     [ { qualifier: 'FG_Customer', position: 10 } ] }
+  @Consumption.semanticObject: 'Customer'
+  SoldToParty;
+
+  @UI:{ lineItem: [{position: 60, importance: #HIGH }, { position: 60 } ],
+        identification: [{position: 60 }],
+        selectionField: [{position: 60 }],
+  fieldGroup:     [ { qualifier: 'FG_Sales', position: 20 }] }
+  SalesContractValidityStartDate;
+
+
+  @UI:{ lineItem: [{position: 70, importance: #HIGH }, { position: 70 } ],
+        identification: [{position: 70 }],
+        selectionField: [{position: 70 }],
+  fieldGroup:     [ { qualifier: 'FG_Sales', position: 30 }] }
+  SalesContractValidityEndDate;
+
+  @UI:{
+        lineItem: [{position: 80, importance: #HIGH }, { position: 80 } ],
+      identification: [{position: 80 }],
+      selectionField: [{position: 80 }],
+      fieldGroup:     [ { qualifier: 'FG_Sales', position: 10 }] }
+  SalesContractType;
+
+
+  @UI:{
+        lineItem: [{position: 70, importance: #HIGH, label: 'AA Partner',
+                    type: #FOR_INTENT_BASED_NAVIGATION, semanticObjectAction: 'Show'  },{position: 70 } ],
+        identification: [{position: 70, label: 'AA Partner' }],
+        selectionField: [{position: 70 }],
+        fieldGroup:     [ { qualifier: 'FG_AACustomer', position: 10 } ] }
+  @EndUserText.label: 'AA Partner'
+  @Consumption.semanticObject: 'Customer'
+  AA_Customer;
+
+  @UI:{ identification: [{position: 72 }],
+  fieldGroup:     [ { qualifier: 'FG_AACustomer', position: 30 } ]}
+  AA_PartnerStreet;
+
+  @UI:{ identification: [{position: 73 }],
+  fieldGroup:     [ { qualifier: 'FG_AACustomer', position: 40 } ]}
+  AA_PartnerPostalcode;
+
+  @UI:{ identification: [{position: 74 }],
+  fieldGroup:     [ { qualifier: 'FG_AACustomer', position: 50 } ]}
+  AA_PartnerCity;
+
+  @UI:{ lineItem: [{position: 90, importance: #HIGH }, { position: 90 } ],
+        identification: [{position: 90 }],
+        selectionField: [{position: 90 }],
+      fieldGroup:     [ { qualifier: 'FG_Tender', position: 40 }] }
+  TenderType;
+
+  @UI:{ identification: [{position: 100 }],
+  fieldGroup:     [ { qualifier: 'FG_Customer', position: 40 } ]}
+  SoldToStreet;
+
+  @UI:{ identification: [{position: 110 }],
+  fieldGroup:     [ { qualifier: 'FG_Customer', position: 50 } ]}
+  SoldToPostalcode;
+
+  @UI:{ identification: [{position: 120 }],
+  fieldGroup:     [ { qualifier: 'FG_Customer', position: 60 } ]}
+  SoldToCity;
+
+  @UI:{ identification: [{position: 200 }],
+  fieldGroup:     [ { qualifier: 'FG_Admin', position: 10 } ]}
+  CreationDate;
+
+  @UI:{ identification: [{position: 210 }],
+  fieldGroup:     [ { qualifier: 'FG_Admin', position: 20 } ]}
+  CreationTime;
+
+  @UI:{ identification: [{position: 220 }],
+  fieldGroup:     [ { qualifier: 'FG_Admin', position: 10 } ]}
+  CreatedByUser;
+
+
+
+
+  @UI:{ identification: [{position: 230 }]}
+  SalesContractCondition;
+
+  @UI:{ identification: [{position: 240 }]}
+  SDDocumentReason;
+
+  @UI:{ identification: [{position: 250, label: 'ECC Document number (ZZEXT_VBELN)' }]}
+  @EndUserText.label: 'ECC Document number (ZZEXT_VBELN)'
+  EccDocumentNumber;
+
+  //item fields
+  @UI:{ lineItem: [{position: 300, importance: #HIGH }, { position: 300 } ]
+  ,      identification: [{position: 300 }],
+  selectionField: [{position: 100 }]
+  }
+  SalesDocumentRjcnReason;
+
+  @UI:{ identification: [{position: 310 }]}
+  Plant;
+
+  @UI:{ identification: [{position: 315 }],
+  fieldGroup:     [ { qualifier: 'FG_Tender', position: 60 }]}
+  @EndUserText.label: 'Customer Reference'
+  PurchaseOrderByCustomer;
+
+  @UI:{ identification: [{position: 316 }],
+  fieldGroup:     [ { qualifier: 'FG_Tender', position: 70 }]}
+  @EndUserText.label: 'Customer Reference Date'
+  CustomerPurchaseOrderDate;
+
+  @UI:{ identification: [{position: 317 }],
+  fieldGroup:     [ { qualifier: 'FG_Sales', position: 50 }]}
+  @EndUserText.label: 'Document Date'
+  SalesContractDate;
+
+  @UI:{ identification: [{position: 318 }],
+  fieldGroup:     [ { qualifier: 'FG_Sales', position: 60 }]}
+  @EndUserText.label: 'Pricing Date'
+  PricingDate;
+
+
+
+
+  @UI:{ lineItem: [{position: 320, importance: #HIGH }, { position: 320 } ],
+        identification: [{position: 320 }],
+        selectionField: [{position: 320 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 10 }] }
+  Material;
+
+
+  @UI:{ lineItem: [{position: 335, importance: #HIGH }, { position: 320 } ],
+        identification: [{position: 335 }],
+        selectionField: [{position: 335 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 20 }] }
+  @EndUserText.label: 'Base Material'
+  BaseMaterial;
+
+  @UI:{ identification: [{position: 340 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 30 }]}
+  StorageLocation;
+
+  @UI:{ identification: [{position: 350 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 40 }]}
+  OrderQuantity;
+
+  @UI:{ identification: [{position: 370 }],
+  fieldGroup:     [ { qualifier: 'FG_Sales', position: 40 }]}
+  TransactionCurrency;
+
+  @UI:{ identification: [{position: 380 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 50 }]}
+  @UI.dataPoint: { qualifier: 'PriceData', title: 'Tender Pricing'}
+  @EndUserText.label: 'Tender Pricing'
+  TenderPricingAmount;
+
+  @UI:{ lineItem: [{position: 390, importance: #HIGH }, { position: 390 } ]
+  ,      identification: [{position: 390 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 60 }]
+  }
+  PriceDetnExchangeRate;
+
+  @UI:{ lineItem: [{position: 400, importance: #HIGH }, { position: 400 } ]
+  ,      identification: [{position: 400 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 70 }]
+
+  }
+  @UI.dataPoint: {
+  //  title: 'Unit Price',
+  //  description: 'Name',
+  valueFormat: {
+    scaleFactor: 1,
+    numberOfFractionalDigits: 0
+  }
+  }
+  NetPriceQuantity;
+
+  @UI:{ identification: [{position: 410 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 80 }]}
+  ShippingPoint;
+
+  @UI:{ identification: [{position: 420 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 90 }]}
+  Route;
+
+  @UI:{ identification: [{position: 430 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 100 }]}
+  SalesContractItemCategory;
+
+  @UI:{ lineItem: [{position: 440, importance: #MEDIUM } ],
+        identification: [{position: 440 }],
+        fieldGroup:     [ { qualifier: 'FG_Item', position: 110 }] }
+      @EndUserText.label: 'Condition Value'
+      ConditionAmount;
+      
+  @UI:{ lineItem: [{position: 445, importance: #MEDIUM } ],
+        identification: [{position: 445 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 120 }] }
+      @EndUserText.label: 'Condition Quantity'
+      ConditionQuantity;
+      
+  @UI:{ lineItem: [{position: 450, importance: #MEDIUM } ],
+        identification: [{position: 450 }],
+  fieldGroup:     [ { qualifier: 'FG_Item', position: 130 }] }      
+      @EndUserText.label: 'Condition UoM'        
+      ConditionUoM;
+
+  @UI:{ identification: [{position: 440, label: 'Item Created On' }],
+  fieldGroup:     [ { qualifier: 'FG_Admin', position: 40 }]}
+  @EndUserText.label: 'Item Created on'
+  ItemCreationDate;
+
+  @UI:{ identification: [{position: 450, label: 'Item Created At' }],
+  fieldGroup:     [ { qualifier: 'FG_Admin', position: 50 }]}
+  @EndUserText.label: 'Item Created At'
+  ItemCreationTime;
+
+  @UI:{ identification: [{position: 460, label: 'Item Created By' }],
+  fieldGroup:     [ { qualifier: 'FG_Admin', position: 60 }]}
+  @EndUserText.label: 'Item Created By'
+  ItemCreatedByUser;
+
+  @UI:{ lineItem: [{position: 800, importance: #HIGH }, { position: 800 } ],
+  identification: [{position: 800 }],
+  selectionField: [{position: 800 }],
+  fieldGroup:     [ { qualifier: 'FG_Tender', position: 50 }] }
+  @UI.dataPoint: { qualifier: 'StatusData', title: 'Status'}
+  TenderStatus;
+
+}
