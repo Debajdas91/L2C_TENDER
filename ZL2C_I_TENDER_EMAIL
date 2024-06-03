@@ -1,0 +1,122 @@
+@AccessControl.authorizationCheck: #CHECK
+@EndUserText.label: 'Tender: Email Sending'
+@Metadata.allowExtensions: true
+define root view entity ZL2C_I_TENDER_EMAIL
+  as select from zl2c_i_tender_dataselect_tf(client : $session.client) as selector
+    inner join   I_SalesContract                                       as SalesContract on SalesContract.SalesContract = selector.SalesContract
+
+  association [1..1] to v_konv                   as konv           on  konv.knumv = SalesContract.SalesContractCondition
+                                                                   and konv.kposn = selector.SalesContractItem
+                                                                   and konv.kschl = 'YTPR'
+
+  association [1..1] to I_SalesContractItem      as Item           on  Item.SalesContract     = selector.SalesContract
+                                                                   and Item.SalesContractItem = selector.SalesContractItem
+
+  association [1..1] to I_SalesDocumentItem      as SDItem         on  SDItem.SalesDocument     = selector.SalesContract
+                                                                   and SDItem.SalesDocumentItem = selector.SalesContractItem
+
+  association [1..1] to I_SalesContractPartner   as _Partner       on  _Partner.SalesContract   = $projection.SalesContract
+                                                                   and _Partner.Customer        = selector.AA_Partner
+                                                                   and _Partner.PartnerFunction = 'AA'
+
+  association [1..1] to ZL2C_I_TENDER_DATA       as _TenderData    on  _TenderData.SalesContract = $projection.SalesContract
+
+  association [0..1] to zl2c_tendr_smode         as _SelectionMode on  _SelectionMode.username = $session.user
+
+  association [1..1] to ZL2C_I_TENDER_ZSTATUS_VH as _TenderStatus  on  _TenderStatus.Status = $projection.TenderStatus
+
+  association [1..1] to zl2c_i_tender_ztype_vh   as _TenderType    on  _TenderType.TenderType = $projection.TenderType
+
+{
+      @Consumption.semanticObject: 'SalesContract'
+  key cast(selector.SalesContract as sales_contract preserving type)                                    as SalesContract,
+  key selector.SalesContractItem                                                                        as SalesContractItem,
+  key selector.AA_Partner                                                                               as AA_Customer,
+
+      _Partner._Address.FullName                                                                        as AA_PartnerName,
+      _Partner._Address.StreetName                                                                      as AA_PartnerStreet,
+      _Partner._Address.PostalCode                                                                      as AA_PartnerPostalcode,
+      _Partner._Address.CityName                                                                        as AA_PartnerCity,
+
+      @ObjectModel.foreignKey.association: '_SalesOrganization'
+      SalesContract.SalesOrganization                                                                   as SalesOrganization,
+      SalesContract._SalesOrganization._Text[1:Language=$session.system_language].SalesOrganizationName,
+      @ObjectModel.foreignKey.association: '_DistributionChannel'
+      SalesContract.DistributionChannel                                                                 as DistributionChannel,
+      SalesContract._DistributionChannel._Text[1:Language=$session.system_language].DistributionChannelName,
+      @ObjectModel.foreignKey.association: '_OrganizationDivision'
+      SalesContract.OrganizationDivision                                                                as Division,
+      @ObjectModel.foreignKey.association: '_SalesContractType'
+      SalesContract.SalesContractType                                                                   as SalesContractType,
+      SalesContract._SalesContractType._Text[1:Language=$session.system_language].SalesDocumentTypeName as SalesContractTypeName,
+
+      @ObjectModel.foreignKey.association: '_SoldToParty'
+      @Consumption.semanticObject: 'Customer'
+      SalesContract.SoldToParty,
+
+      SalesContract._SoldToParty.CustomerName                                                           as SoldToPartyName,
+      SalesContract._SoldToParty.StreetName                                                             as SoldToStreet,
+      SalesContract._SoldToParty.PostalCode                                                             as SoldToPostalcode,
+      SalesContract._SoldToParty.CityName                                                               as SoldToCity,
+
+      SalesContract.SalesContractValidityStartDate                                                      as SalesContractValidityStartDate,
+      SalesContract.SalesContractValidityEndDate                                                        as SalesContractValidityEndDate,
+
+      @Semantics.systemDate.createdAt: true
+      SalesContract.CreationDate                                                                        as CreationDate,
+      SalesContract.CreationTime                                                                        as CreationTime,
+      SalesContract.CreatedByUser                                                                       as CreatedByUser,
+
+      SalesContract.SalesContractCondition,
+      SalesContract.SDDocumentReason,
+      SalesContract.PurchaseOrderByCustomer                                                             as PurchaseOrderByCustomer,
+      SalesContract.CustomerPurchaseOrderDate,
+      SalesContract.SalesContractDate,
+      SalesContract.PricingDate,
+
+      Item.Material                                                                                     as Material,
+      Item._MaterialText                                                                                as MaterialText,
+      Item.SalesDocumentRjcnReason                                                                      as SalesDocumentRjcnReason,
+      Item.Plant                                                                                        as Plant,
+      Item.StorageLocation                                                                              as StorageLocation,
+      Item.OrderQuantity                                                                                as OrderQuantity,
+      Item.OrderQuantityUnit                                                                            as OrderQuantityUnit,
+      Item.TransactionCurrency                                                                          as TransactionCurrency,
+
+      Item._PricingElement[1:ConditionType='YTPR' ].ConditionRateValue                                  as TenderPricingAmount,
+      Item.PriceDetnExchangeRate                                                                        as PriceDetnExchangeRate,
+      Item.NetPriceQuantity                                                                             as NetPriceQuantity,
+      Item.NetPriceQuantityUnit                                                                         as NetPriceQuantityUnit,
+      Item.ShippingPoint                                                                                as ShippingPoint,
+      SDItem.Route                                                                                      as Route,
+      Item.SalesContractItemCategory                                                                    as SalesContractItemCategory,
+
+      Item.CreationDate                                                                                 as ItemCreationDate,
+      Item.CreationTime                                                                                 as ItemCreationTime,
+      Item.CreatedByUser                                                                                as ItemCreatedByUser,
+
+      @Semantics.amount.currencyCode: 'TransactionCurrency'
+      konv.kbetr                                                                                        as ConditionAmount,
+      konv.kpein                                                                                        as ConditionQuantity,
+      konv.kmein                                                                                        as ConditionUoM,
+
+      selector.BaseMaterial                                                                             as BaseMaterial,
+      
+      _TenderData.TenderStatus                                                                          as TenderStatus,
+      _TenderData.TenderType                                                                            as TenderType,
+      _TenderData.EccDocumentNumber                                                                     as EccDocumentNumber,
+      _SelectionMode.selectionmode                                                                      as SelectionMode,
+
+      SalesContract._SalesOrganization,
+      SalesContract._DistributionChannel,
+      SalesContract._OrganizationDivision,
+      SalesContract._SalesContractType,
+      SalesContract._SoldToParty,
+      _TenderData,
+      _Partner,
+      _SelectionMode,
+      _TenderStatus,
+      _TenderType
+
+}
+
