@@ -1,0 +1,86 @@
+@AccessControl.authorizationCheck: #CHECK
+@EndUserText.label: 'Tender: Mass Change - Projection'
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@Metadata.ignorePropagatedAnnotations: true
+@Metadata.allowExtensions: true
+@Search.searchable: true
+@ObjectModel.usageType:{
+    serviceQuality: #X,
+    sizeCategory: #S,
+    dataClass: #MIXED
+}
+
+define root view entity ZL2C_C_TENDER_MASS_CHANGE
+  as projection on ZL2C_I_TENDER_MASS_CHANGE
+{
+      @Consumption.valueHelpDefinition: [{
+          entity: { name: 'I_SalesContract',  element: 'SalesContract' },
+          useForValidation: true }]
+      @Search.defaultSearchElement: true
+  key SalesContract,
+  key SalesContractItem,
+      @Consumption.valueHelpDefinition: [{
+          entity: { name: 'I_SalesOrganization',  element: 'SalesOrganization' },
+          useForValidation: true }]
+      @Search.defaultSearchElement: true
+      @ObjectModel.text.element: ['SalesOrganizationName']
+      SalesOrganization,
+      SalesOrganizationName,
+
+      @Consumption.valueHelpDefinition: [{
+          entity: { name: 'I_DistributionChannel',  element: 'DistributionChannel' },
+          useForValidation: true }]
+      @Search.defaultSearchElement: true
+      @ObjectModel.text.element: ['DistributionChannelName']
+      DistributionChannel,
+      DistributionChannelName,
+
+      @Consumption.valueHelpDefinition: [{
+          entity: { name: 'I_Division',  element: 'OrganizationDivision' },
+          useForValidation: true }]
+      @Search.defaultSearchElement: true
+      OrganizationDivision,
+
+      ValidityStartDate,
+      ValidityEndDate,
+      PricingDate,
+      Currency,
+      @Search.defaultSearchElement: true
+      @Consumption.valueHelpDefinition: [{
+          entity: { name: 'zl2c_i_tender_zstatus_vh',  element: 'Status' },
+          useForValidation: true }]
+      @ObjectModel.text.element: ['TenderStatusDesc']
+      TenderStatus,
+      _TenderStatus.StatusDesc as TenderStatusDesc,
+
+      @Search.defaultSearchElement: true
+      @ObjectModel.text.element: ['MaterialText']
+      @Consumption.valueHelpDefinition: [{
+        entity: { name: 'zl2c_i_tender_material_vh',  element: 'Material' },
+        label: 'Material',
+        useForValidation: true }]
+      Material,
+      MaterialText,
+      
+      @Semantics.amount.currencyCode: 'Currency'
+      ConditionAmount,
+      ConditionQuantity,
+      ConditionUoM,      
+      @Consumption.valueHelpDefinition: [{
+      entity  : { name: 'ZL2C_I_TENDER_ABGRU_VH',  element: 'ReasonForRejection' },
+      label   : 'Reason For Rejection',
+      useForValidation: true }]
+      RejectionReason,
+
+      @Consumption.valueHelpDefinition: [{
+         entity  : { name: 'ZL2C_I_TENDER_BISMT_VH',  element: 'BaseMaterial' },
+         label   : 'Base Material',
+         useForValidation: true }]
+      BaseMaterial,
+
+      Message,
+      MessageType,
+      CriticalityType,
+      PurchaseOrderByCustomer
+
+}
