@@ -1,0 +1,122 @@
+@Metadata.layer: #CUSTOMER
+@UI:{ headerInfo: {
+    typeName: 'Tender Document',
+    typeNamePlural: 'Tender Documents',
+    title: {
+        type: #STANDARD,
+        label: 'Tender Document',
+        value: 'SalesContract'
+    }
+} }
+annotate view ZL2C_C_TENDER_MASS_CHANGE with
+{
+
+  @UI.facet: [{
+     id: 'Tender',
+      purpose: #STANDARD,
+      position: 10,feature: '',
+      label: 'Tender Document',
+      type: #IDENTIFICATION_REFERENCE }]
+
+  @UI:{ lineItem: [{position: 20, label: 'Tender Document', importance: #HIGH,
+         type: #FOR_INTENT_BASED_NAVIGATION, semanticObject: 'SalesContract' } ],
+        identification: [{position: 20, label: 'Tender Document'}],
+        selectionField: [{position: 10 }] }
+  @EndUserText.label: 'Tender Document'
+  @Consumption.semanticObject: 'SalesContract'
+  SalesContract;
+
+  @UI:{ lineItem: [{position: 10, label: 'Tender Document Item', importance: #HIGH }, { type: #FOR_ACTION, dataAction: 'change_material', label: 'Add/Replace with reference', invocationGrouping: #CHANGE_SET } ],
+        identification: [{position: 10, label: 'Tender Document Item' }] }
+  SalesContractItem;
+
+  @UI:{ lineItem: [{position: 30, importance: #HIGH }, { type: #FOR_ACTION, dataAction: 'add_material', label: 'Add Material', invocationGrouping: #CHANGE_SET} ],
+        identification: [{position: 30 }],
+        selectionField: [{position: 40 }] }
+  SalesOrganization;
+
+  @UI:{ lineItem: [{position: 40, importance: #HIGH }, { type: #FOR_ACTION, dataAction: 'reject_material', label: 'Reject Material', invocationGrouping: #CHANGE_SET} ],
+        identification: [{position: 40 }]
+
+        }
+  DistributionChannel;
+
+  @UI:{ lineItem: [{position: 50, importance: #HIGH },
+  {  type: #FOR_ACTION, dataAction: 'SetReadMode', label: 'Set Selection Mode'} ] ,
+        identification: [{position: 50 }]
+        }
+  OrganizationDivision;
+  
+    
+  @UI:{ lineItem: [{position: 60, importance: #HIGH } ],
+        identification: [{position: 60 }],
+        selectionField: [{position: 30 }] }
+  TenderStatus;
+
+  @UI:{ lineItem: [{position: 70, importance: #HIGH } ],
+        identification: [{position: 70 }],
+        selectionField: [{position: 99 }] }
+  Material;
+  
+    @UI:{ lineItem: [{position: 80, label: 'Base Material', importance: #HIGH } ],
+        identification: [{position: 80, label: 'Base Material' }],
+        selectionField: [{position: 100 }] }
+  @EndUserText.label: 'Base Material'
+  BaseMaterial;
+  
+  @UI:{ lineItem: [{position: 90, cssDefault.width: '3rem', importance: #HIGH, criticality: 'CriticalityType' } ],
+        identification: [{position: 90, criticality: 'CriticalityType' }] }
+  Message;
+
+  @UI:{ lineItem: [{position: 100, importance: #HIGH }],
+        identification: [{position: 100 }] }
+  MessageType;
+
+  @UI:{ lineItem: [{position: 110, importance: #HIGH } ],
+      identification: [{position: 110 }] }
+  RejectionReason;
+
+  @UI:{ lineItem: [{position: 120, importance: #MEDIUM } ],
+        identification: [{position: 120 }] }
+      @EndUserText.label: 'Condition Value'
+      ConditionAmount;
+      
+  @UI:{ lineItem: [{position: 130, importance: #MEDIUM } ],
+        identification: [{position: 130 }] }
+      @EndUserText.label: 'Condition Quantity'
+      ConditionQuantity;
+      
+  @UI:{ lineItem: [{position: 140, importance: #MEDIUM } ],
+        identification: [{position: 140 }] }      
+      @EndUserText.label: 'Condition UoM'        
+      ConditionUoM;
+      
+  @UI:{ lineItem: [{position: 150, cssDefault.width: '5rem', importance: #HIGH } ],
+        identification: [{position: 150 }],
+        selectionField: [{position: 90 }] }
+  PricingDate;
+              
+  @UI:{ lineItem: [{position: 160, cssDefault.width: '5rem', importance: #HIGH }, { type: #FOR_ACTION, dataAction: 'remove_rejection', label: 'Remove Rejection', invocationGrouping: #CHANGE_SET} ],
+        identification: [{position: 160 }],
+        selectionField: [{position: 70 }] }
+  ValidityStartDate;
+
+  @UI:{ lineItem: [{position: 170, cssDefault.width: '5rem', importance: #HIGH }, { type: #FOR_ACTION, dataAction: 'clear_message', label: 'Clear Messages' } ],
+        identification: [{position: 170 }],
+        selectionField: [{position: 80 }] }
+  ValidityEndDate;
+  
+
+  @UI:{ lineItem: [{position: 180, cssDefault.width: '5rem', importance: #HIGH } ],
+        identification: [{position: 180 }],
+        selectionField: [{position: 70 }] }
+  Currency;
+
+  @UI:{ hidden: true }
+  CriticalityType;
+  
+  @UI:{ lineItem: [{position: 190, cssDefault.width: '5rem', importance: #HIGH } ],
+        identification: [{position: 190 }] }
+  @EndUserText.label: 'Customer Reference'
+  PurchaseOrderByCustomer;
+}
