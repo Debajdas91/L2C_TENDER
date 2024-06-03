@@ -1,0 +1,319 @@
+class ZCL_L2C_TENDER_APPLICATION_JOB definition
+  public
+  final
+  create public .
+
+public section.
+
+  interfaces IF_APJ_DT_EXEC_OBJECT .
+  interfaces IF_APJ_RT_EXEC_OBJECT .
+
+  constants C_SEL_FUNCTION type STRING value 'FUNCTION' ##NO_TEXT.
+  constants C_SEL_TEST type STRING value 'TEST' ##NO_TEXT.
+  constants C_SEL_OLDBISMT type STRING value 'OLDBISMT' ##NO_TEXT.
+  constants C_SEL_NEWMATNR type STRING value 'NEWMATNR' ##NO_TEXT.
+  constants C_SEL_ABGRU type STRING value 'ABGRU' ##NO_TEXT.
+  constants C_SEL_PRSDT type STRING value 'PRSDT' ##NO_TEXT.
+  constants C_SEL_KWMENG type STRING value 'KWMENG' ##NO_TEXT.
+  constants C_SEL_VRKME type STRING value 'VRKME' ##NO_TEXT.
+  constants C_SEL_KBETR type STRING value 'KBETR' ##NO_TEXT.
+  constants C_SEL_NEW_PRIC type STRING value 'NEW_PRIC' ##NO_TEXT.
+  constants C_SEL_ORDERS type STRING value 'ORDERS' ##NO_TEXT.
+  constants C_SEL_ORDER_ITEMS type STRING value 'ITEMS' ##NO_TEXT.
+  constants C_SEL_GUEBG type STRING value 'GUEBG' ##NO_TEXT.
+  constants C_SEL_GUEEN type STRING value 'GUEEN' ##NO_TEXT.
+  constants C_SEL_ZZTSTATUS type STRING value 'ZZTSTATUS' ##NO_TEXT.
+  constants C_SEL_NEWBISMT type STRING value 'NEWBISMT' ##NO_TEXT.
+  constants C_SEL_NEWABGRU type STRING value 'NEWABGRU' ##NO_TEXT.
+protected section.
+private section.
+ENDCLASS.
+
+
+
+CLASS ZCL_L2C_TENDER_APPLICATION_JOB IMPLEMENTATION.
+
+
+  METHOD if_apj_dt_exec_object~get_parameters.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHJAVI     04-FEB-2023, Sunday      Initial                       *
+*&---------------------------------------------------------------------*
+
+    "Field names can be 8 char long
+    et_parameter_def = VALUE #( datatype       = 'C'
+
+                                ( changeable_ind = abap_false
+                                  selname       = me->c_sel_function
+                                  kind          = if_apj_dt_exec_object=>parameter
+                                  param_text    = 'Tender Action Mode'
+                                  length        = 2
+                                  lowercase_ind = abap_false
+                                  mandatory_ind = abap_true )
+
+                                ( changeable_ind = abap_true
+                                  selname    = me->c_sel_test
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Test Mode'
+                                  length     = 1
+                                  checkbox_ind = abap_true )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_oldbismt
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Old/Base Material no'
+                                  length     = 40 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_newmatnr
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Material Number'
+                                  length     = 40 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_abgru
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Reason for Rejection'
+                                  length     = 2 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_prsdt
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Pricing Date'
+                                  length     = 8 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_kwmeng
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Order Quantity'
+                                  length     = 15
+                                  decimals   = 3 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_vrkme
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Sales Unit'
+                                  length     = 3 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_kbetr
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Condition Amount'
+                                  length     = 11
+                                  decimals   = 2 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_new_pric
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'New Pricing'
+                                  length     = 1
+                                  checkbox_ind = abap_true )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_orders
+                                  kind       = if_apj_dt_exec_object=>select_option
+                                  param_text = 'Tender Documents'
+                                  length     = 16 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_guebg
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Validity Date From'
+                                  length     = 8 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_gueen
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Validity Date To'
+                                  length     = 8 )
+
+                                ( changeable_ind = abap_false
+                                  selname    = me->c_sel_zztstatus
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'Tender Status'
+                                  length     = 2 )
+
+                               ( changeable_ind = abap_false
+                                  selname    = me->c_sel_newbismt
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'New/Base Material no'
+                                  length     = 40 )
+
+                               ( changeable_ind = abap_false
+                                  selname    = me->c_sel_newabgru
+                                  kind       = if_apj_dt_exec_object=>parameter
+                                  param_text = 'New Reason for Rejection'
+                                  length     = 2 )
+ ).
+
+    "default values
+    et_parameter_val = VALUE #( sign   = 'I'
+                                option = 'EQ'
+                                ( selname = 'TEST' low = abap_true )
+ ).
+
+  ENDMETHOD.
+
+
+  METHOD if_apj_rt_exec_object~execute.
+*&---------------------------------------------------------------------*
+*& DD ID        :                                                      *
+*& FS ID        :                                                      *
+*& User Stories :                                                      *
+*& Work Item    :2000003281                                            *
+*&---------------------------------------------------------------------*
+*& Tender change                                                       *
+*&---------------------------------------------------------------------*
+*& Transport: DA2K921760                                               *
+*&---------------------------------------------------------------------*
+*& Change Log:                                                         *
+*&---------------------------------------------------------------------*
+*& Author      ¦ Date           ¦ Comment                              *
+*&---------------------------------------------------------------------*
+*&  HUHJAVI     04-FEB-2023, Sunday      Initial                       *
+*&---------------------------------------------------------------------*
+
+    DATA:
+      ls_tender_params  TYPE zl2c_tender_params,
+      lt_sales_doc_data TYPE vlc_sdoc_item_t,
+      lt_tender_msg     TYPE zl2c_t_tender_msg,
+      lv_severity       TYPE symsgty.
+
+    DATA: lo_mass_change_util TYPE REF TO zcl_l2c_tender_mass_change_uti,
+          lo_free             TYPE REF TO if_bali_free_text_setter,
+          lo_msg              TYPE REF TO if_bali_message_setter.
+
+    DATA(lo_log) = cl_bali_log=>create( ).
+
+    "Init log
+    DATA(lo_header) = cl_bali_header_setter=>create( object      = 'ZL2C_TENDER_LOG_OBJ'
+                                                     subobject   = ''
+                                                     external_id = cl_system_uuid=>create_uuid_c32_static( ) ).
+    lo_log->set_header( lo_header ).
+
+
+    FIELD-SYMBOLS: <ls_sales_doc_data> TYPE vlc_sdoc_item.
+    ls_tender_params-job = abap_true.
+    LOOP AT it_parameters ASSIGNING FIELD-SYMBOL(<ls_par>).
+
+      CASE <ls_par>-selname.
+        WHEN c_sel_function.
+          ls_tender_params-function = <ls_par>-low.
+        WHEN c_sel_test.
+          ls_tender_params-test = <ls_par>-low.
+        WHEN c_sel_oldbismt.
+          ls_tender_params-old_bismt = <ls_par>-low.
+        WHEN c_sel_newmatnr.
+          ls_tender_params-new_matnr = <ls_par>-low.
+        WHEN c_sel_abgru.
+          ls_tender_params-abgru = <ls_par>-low.
+        WHEN c_sel_prsdt.
+          ls_tender_params-prsdt = <ls_par>-low.
+        WHEN c_sel_kwmeng.
+          ls_tender_params-kwmeng = <ls_par>-low.
+        WHEN c_sel_vrkme.
+          ls_tender_params-vrkme = <ls_par>-low.
+        WHEN c_sel_kbetr.
+          ls_tender_params-kbetr = <ls_par>-low.
+        WHEN c_sel_new_pric.
+          ls_tender_params-new_pricing = <ls_par>-low.
+        WHEN c_sel_orders.
+          APPEND INITIAL LINE TO lt_sales_doc_data ASSIGNING <ls_sales_doc_data>.
+          <ls_sales_doc_data>-vbeln = <ls_par>-low(10).
+          <ls_sales_doc_data>-posnr = <ls_par>-low+10(6).
+        WHEN c_sel_guebg.
+          ls_tender_params-guebg = <ls_par>-low.
+        WHEN c_sel_gueen.
+          ls_tender_params-gueen = <ls_par>-low.
+        WHEN c_sel_zztstatus.
+          ls_tender_params-zztstatus = <ls_par>-low.
+        WHEN c_sel_newbismt.
+          ls_tender_params-new_bismt = <ls_par>-low.
+        WHEN c_sel_newabgru.
+          ls_tender_params-new_abgru = <ls_par>-low.
+        WHEN OTHERS.
+          CONTINUE.
+      ENDCASE.
+    ENDLOOP.
+
+    "log params
+    lo_free = cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_information
+                                                text     = |FUNCTION: { ls_tender_params-function }, TEST: { ls_tender_params-test }, | &&
+                                                           |OLD_BISMT: { ls_tender_params-old_bismt }, NEW_MATNR: { ls_tender_params-new_matnr }, | &&
+                                                           |ABGRU: { ls_tender_params-abgru }, PRSDT: { ls_tender_params-prsdt } | &&
+                                                           |KWMENG: { ls_tender_params-kwmeng }, VRKME: { ls_tender_params-vrkme } | &&
+                                                           |KBETR: { ls_tender_params-kbetr }, NEW_PRICING: { ls_tender_params-new_pricing } | &&
+                                                           |GUEBG: { ls_tender_params-guebg }, GUEEN: { ls_tender_params-gueen }, ZZTSTATUS: { ls_tender_params-zztstatus } | &&
+                                                           |NEW_BISMT: { ls_tender_params-new_bismt }, NEW_ABGRU: { ls_tender_params-new_abgru } | ).
+    lo_log->add_item( lo_free ).
+    "log params
+    lo_free = cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_information
+                                                text     = |Number of Tender Documents: { lines( lt_sales_doc_data ) }| ).
+    lo_log->add_item( lo_free ).
+
+    IF ls_tender_params-function NE zcl_l2c_tender_mass_change_uti=>c_function-change_matnr AND
+       ls_tender_params-function NE zcl_l2c_tender_mass_change_uti=>c_function-add_matnr AND
+       ls_tender_params-function NE zcl_l2c_tender_mass_change_uti=>c_function-reject_matnr AND
+*       ls_tender_params-function NE zcl_l2c_tender_mass_change_uti=>c_function-change_pricing_date AND
+       ls_tender_params-function NE zcl_l2c_tender_mass_change_uti=>c_function-remove_rejection AND
+       ls_tender_params-function NE zcl_l2c_tender_mass_change_uti=>c_function-change_validity_date AND
+       ls_tender_params-function NE zcl_l2c_tender_mass_change_uti=>c_function-change_status.
+
+      "Error, unknown Function value
+      lo_free = cl_bali_free_text_setter=>create( severity = if_bali_constants=>c_severity_error
+                                                  text     = |FUNCTION: { ls_tender_params-function } is not supported| ).
+      lo_log->add_item( lo_free ).
+      cl_bali_log_db=>get_instance( )->save_log( log                        = lo_log
+                                           assign_to_current_appl_job = abap_true ).
+      RETURN.
+    ENDIF.
+
+    CREATE OBJECT lo_mass_change_util.
+
+    TRY.
+
+        "Change Tender Documents
+        lo_mass_change_util->change_order_with_job(
+          EXPORTING
+            io_log            = lo_log
+            is_tender_params  = ls_tender_params
+            it_sales_doc_data = lt_sales_doc_data
+          IMPORTING
+            et_tender_msg     = lt_tender_msg ).
+
+        "Update Messages
+        lo_mass_change_util->update_messages( it_tender_msg = lt_tender_msg ).
+
+      CATCH zcx_l2c_message INTO DATA(lo_message).
+
+        IF lo_message->v_msgty CA 'EA'.
+          lv_severity = if_bali_constants=>c_severity_error.
+        ELSE.
+          lv_severity = if_bali_constants=>c_severity_information.
+        ENDIF.
+        lo_msg = cl_bali_message_setter=>create(
+          severity   = if_bali_constants=>c_severity_information
+          id         = lo_message->v_msgid
+          number     = lo_message->v_msgno
+          variable_1 = lo_message->v_msgv1
+          variable_2 = lo_message->v_msgv2
+          variable_3 = lo_message->v_msgv3
+          variable_4 = lo_message->v_msgv4 ).
+        lo_log->add_item( lo_msg ).
+
+    ENDTRY.
+
+  ENDMETHOD.
+ENDCLASS.
