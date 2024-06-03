@@ -1,0 +1,164 @@
+CLASS lhc_zl2c_i_tender_email DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      IMPORTING keys REQUEST requested_authorizations FOR tendermail RESULT result.
+
+    METHODS read FOR READ
+      IMPORTING keys FOR READ tendermail RESULT result.
+
+    METHODS lock FOR LOCK
+      IMPORTING keys FOR LOCK tendermail.
+
+    METHODS sendemail FOR MODIFY
+      IMPORTING keys FOR ACTION tendermail~sendemail RESULT result.
+
+
+    METHODS setreadmode FOR MODIFY
+      IMPORTING keys FOR ACTION tendermail~setreadmode RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_zl2c_i_tender_email IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD read.
+    WAIT UP TO 0 SECONDS.
+  ENDMETHOD.
+
+  METHOD lock.
+  ENDMETHOD.
+
+  METHOD sendemail.
+
+
+    DATA : lo_mail             TYPE REF TO zcl_clib_email_02,
+           lt_calculated_data  TYPE STANDARD TABLE OF zl2c_i_tender_email WITH DEFAULT KEY,
+           lt_zl2c_tendr_email TYPE STANDARD TABLE OF zl2c_tendr_email WITH DEFAULT KEY,
+           lv_address          TYPE bapiaddr3,
+           lv_subject          TYPE so_obj_des,
+           lt_body_text        TYPE soli_tab,
+           lv_rec_email        TYPE ad_smtpadr,
+           lo_cxbcs            TYPE REF TO cx_bcs,
+           lo_clib_mail        TYPE REF TO zcx_clib_email_02,
+           ls_mail             TYPE  sx_address.
+
+    LOOP AT keys ASSIGNING FIELD-SYMBOL(<ls_key>).
+      APPEND INITIAL LINE TO lt_zl2c_tendr_email ASSIGNING FIELD-SYMBOL(<ls_tender>).
+      <ls_tender>-salescontract = <ls_key>-salescontract.
+      <ls_tender>-salescontractitem = <ls_key>-salescontractitem.
+    ENDLOOP.
+    IF lt_zl2c_tendr_email IS NOT INITIAL.
+      CREATE OBJECT lo_mail.
+
+      lv_rec_email = keys[ 1 ]-%param-email.
+
+      ls_mail-type = 'INT'.
+      ls_mail-address = lv_rec_email.
+
+      CALL FUNCTION 'SX_INTERNET_ADDRESS_TO_NORMAL'
+        EXPORTING
+          address_unstruct    = ls_mail
+        EXCEPTIONS
+          error_address_type  = 1
+          error_address       = 2
+          error_group_address = 3
+          OTHERS              = 4.
+
+      IF sy-subrc IS NOT INITIAL.
+        reported-tendermail = VALUE #(
+         ( %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error text = |Email address invalid: { lv_rec_email }| ) )  ).
+      ELSE.
+
+        SELECT * FROM zl2c_i_tender_email INTO TABLE @DATA(lt_tender_email)
+        FOR ALL ENTRIES IN @lt_zl2c_tendr_email
+        WHERE salescontract = @lt_zl2c_tendr_email-salescontract.
+
+        DELETE ADJACENT DUPLICATES FROM lt_tender_email COMPARING salescontract.
+
+        LOOP AT lt_tender_email ASSIGNING FIELD-SYMBOL(<ls_tender_email>).
+          APPEND INITIAL LINE TO lt_body_text ASSIGNING FIELD-SYMBOL(<ls_body_text>).
+          <ls_body_text>-line = |{ <ls_tender_email>-salescontract } { <ls_tender_email>-purchaseorderbycustomer } { <ls_tender_email>-salescontractvaliditystartdate } { <ls_tender_email>-salescontractvalidityenddate } |.
+        ENDLOOP.
+
+        lv_subject = |Tender documents  { sy-datlo } { sy-timlo }|.
+        TRY.
+
+            lo_mail->send(
+              subject      = lv_subject
+              it_body_text = lt_body_text
+              to           = lv_rec_email
+              commit_work  = abap_false ).
+
+            reported-tendermail = VALUE #(
+             ( %msg = new_message_with_text( severity = if_abap_behv_message=>severity-success text = |Email sent| ) ) ).
+
+          CATCH cx_bcs INTO lo_cxbcs.
+            DATA(lv_message) = lo_cxbcs->error_type.
+            reported-tendermail = VALUE #(
+             ( %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error text = lv_message ) )  ).
+
+          CATCH zcx_clib_email_02 INTO lo_clib_mail.
+            lv_message = lo_clib_mail->textid.
+            reported-tendermail = VALUE #(
+             ( %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error text = lv_message ) )  ).
+        ENDTRY.
+      ENDIF.
+
+
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD setreadmode.
+    READ TABLE keys ASSIGNING FIELD-SYMBOL(<ls_key>) INDEX 1.
+    IF sy-subrc IS INITIAL.
+      DATA(lo_tenderr) = zcl_l2c_tender_email_logic=>get_instance( ).
+      lo_tenderr->set_selmode( iv_selmode = <ls_key>-%param-readmode ).
+
+      APPEND VALUE #(     %msg           = new_message( id       = 'ZL2C_TENDER'
+                                                        number   = 007
+                                                        v1       = <ls_key>-%param-readmode
+                                                        severity = if_abap_behv_message=>severity-success ) ) TO reported-tendermail.
+
+    ENDIF.
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lsc_zl2c_i_tender_email DEFINITION INHERITING FROM cl_abap_behavior_saver.
+  PROTECTED SECTION.
+
+    METHODS finalize REDEFINITION.
+
+    METHODS check_before_save REDEFINITION.
+
+    METHODS save REDEFINITION.
+
+    METHODS cleanup REDEFINITION.
+
+    METHODS cleanup_finalize REDEFINITION.
+
+ENDCLASS.
+
+CLASS lsc_zl2c_i_tender_email IMPLEMENTATION.
+
+  METHOD finalize.
+  ENDMETHOD.
+
+  METHOD check_before_save.
+  ENDMETHOD.
+
+  METHOD save.
+  ENDMETHOD.
+
+  METHOD cleanup.
+  ENDMETHOD.
+
+  METHOD cleanup_finalize.
+  ENDMETHOD.
+
+ENDCLASS.
