@@ -1,0 +1,170 @@
+CLASS zcl_l2c_tender_dataselector DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    INTERFACES: if_amdp_marker_hdb.
+    CLASS-METHODS getdata
+        FOR TABLE FUNCTION
+        zl2c_i_tender_dataselect_tf.
+    CLASS-METHODS getmassdata
+        FOR TABLE FUNCTION
+        zl2c_i_tender_m_dataselect_tf.
+    CLASS-METHODS getabgru
+        FOR TABLE FUNCTION
+        zl2c_i_tender_abgru_tf.
+
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS zcl_l2c_tender_dataselector IMPLEMENTATION.
+
+  METHOD getdata
+  BY DATABASE FUNCTION FOR HDB LANGUAGE SQLSCRIPT
+        OPTIONS READ-ONLY
+
+        USING
+        zl2c_tendr_smode
+        mara
+        i_salescontract
+        i_salescontractitem
+        i_salescontractpartner.
+
+    declare lv_selection_mode nvarchar( 1 );
+
+    lt_zl2c_tendr_smode = SELECT selectionmode FROM zl2c_tendr_smode WHERE username = session_context('APPLICATIONUSER');
+
+    lv_selection_mode = :lt_zl2c_tendr_smode.selectionmode[1];
+
+    IF lv_selection_mode = 'H' then
+      RETURN SELECT DISTINCT salescontract.mandt as client,
+       salescontract.salescontract as salescontract,
+       '000000' as salescontractitem,
+       '' as aa_partner,
+       '' as basematerial
+       from i_salescontract     as salescontract
+        where salescontract.mandt = session_context('CLIENT');
+
+    ELSEIF lv_selection_mode = 'A' then
+      RETURN SELECT DISTINCT salescontract.mandt as client,
+       salescontract.salescontract as salescontract,
+       '000000' as salescontractitem,
+       partner.customer as aa_partner,
+       '' as basematerial
+         from i_salescontract     as salescontract
+        inner join   i_salescontractpartner as partner    on  partner.salescontract   = salescontract.salescontract
+                                                          and partner.partnerfunction = 'AA'
+                                                          and partner.mandt = salescontract.mandt
+        where salescontract.mandt = session_context('CLIENT');
+
+    ELSE
+      RETURN SELECT salescontract.mandt as client,
+       salescontract.salescontract as salescontract,
+       item.salescontractitem as salescontractitem,
+       '' as aa_partner,
+       mara.bismt as basematerial
+       from i_salescontract     as salescontract
+        inner join   i_salescontractitem as item        on item.salescontract = salescontract.salescontract
+                                                        and item.mandt = salescontract.mandt
+        inner join   mara  as mara on  mara.matnr = item.material
+                                   and mara.mandt = salescontract.mandt
+        where salescontract.mandt = session_context('CLIENT');
+    END if;
+
+
+  ENDMETHOD.
+
+
+
+  METHOD getmassdata
+    BY DATABASE FUNCTION FOR HDB LANGUAGE SQLSCRIPT
+          OPTIONS READ-ONLY
+          USING
+          zl2c_tendm_smode
+          mara
+          i_salescontract
+          i_salescontractitem.
+
+    declare lv_selection_mode nvarchar( 1 );
+
+    lt_zl2c_tendm_smode = SELECT selectionmode FROM zl2c_tendm_smode WHERE username = session_context('APPLICATIONUSER');
+
+    lv_selection_mode = :lt_zl2c_tendm_smode.selectionmode[1];
+
+    IF lv_selection_mode = 'H' then
+       RETURN SELECT DISTINCT
+       salescontract.mandt as client,
+       salescontract.salescontract as salescontract,
+       '000000' as salescontractitem,
+       '' as basematerial
+       from i_salescontract     as salescontract
+        where salescontract.mandt = session_context('CLIENT');
+
+
+    ELSE
+       RETURN SELECT DISTINCT
+       salescontract.mandt as client,
+       salescontract.salescontract as salescontract,
+       item.salescontractitem as salescontractitem,
+       mara.bismt as basematerial
+       from i_salescontract     as salescontract
+        inner join   i_salescontractitem as item        on item.salescontract = salescontract.salescontract
+                                                        and item.mandt = salescontract.mandt
+        inner join   mara  as mara on  mara.matnr     = item.material
+                                   and  mara.mandt = salescontract.mandt
+        where salescontract.mandt = session_context('CLIENT');
+
+
+
+    END if;
+
+  ENDMETHOD.
+
+
+  METHOD getabgru
+  BY DATABASE FUNCTION FOR HDB LANGUAGE SQLSCRIPT
+        OPTIONS READ-ONLY
+        USING
+*        tvagt,
+*    tvag_auart_vko,
+    zl2c_i_tender_abgru_noempty_vh.
+* Get allowed rejection reason values
+* empty
+* ZR
+    RETURN SELECT
+        session_context('CLIENT') as mandt,
+        vh.reasonforrejection,
+        vh.description
+        from zl2c_i_tender_abgru_noempty_vh as vh
+      union all
+           select
+             session_context('CLIENT') as mandt,
+             ' ' as reasonforrejection,
+             'Not Rejected' as description
+             from dummy
+             order by reasonforrejection;
+
+*    RETURN SELECT
+*             tvag_auart_vko.mandt as mandt,
+*             tvag_auart_vko.abgru as reasonforrejection,
+*             tvagt.bezei as description
+*             from    tvag_auart_vko
+*             inner join tvagt on tvag_auart_vko.abgru = tvagt.abgru
+*               and tvag_auart_vko.mandt = tvagt.mandt
+*             where tvag_auart_vko.auart = 'YQTA'
+*               and tvag_auart_vko.mandt = session_context('CLIENT')
+*               and tvagt.spras = 'E'
+*           union all
+*           SELECT
+*             session_context('CLIENT') as mandt,
+*             ' ' as reasonforrejection,
+*             'Not Rejected' as Description
+*             FROM dummy
+*             ORDER BY reasonforrejection;
+
+  endmethod.
+ENDCLASS.
